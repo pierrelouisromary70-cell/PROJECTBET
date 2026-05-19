@@ -46,6 +46,43 @@ Application de paris virtuels entre coureurs à pied. Les cotes sont calculées
   preuve manuelle (URL résultat / capture). Délai 12 h à 14 jours.
   Expiration automatique = NO. Limite 3 défis ouverts par coureur.
 
+## Duels 1v1 entre coureurs
+
+Deux coureurs se défient sur une même métrique avec mise égale. Trois types :
+**FASTEST_TIME** (meilleur chrono sur D km), **LONG_RUN** (sortie la + longue),
+**VOLUME** (km cumulés). Le gagnant rafle le pot (vig 7 %). Les spectateurs
+parient en plus avec cotes basées sur les VDOT et plafonnées par la confiance.
+
+Garde-fous : les deux coureurs doivent avoir un PR vérifié, la confiance
+moyenne doit être ≥ 25 %, parrain/filleul direct ne peuvent pas s'affronter
+ni se parier dessus.
+
+## Clubs
+
+- 1 utilisateur = 1 club à la fois.
+- Création : 500 🪙, requiert au moins 1 chrono certifié.
+- Trésor commun alimenté par donations.
+- Rôles : Capitaine / Officier / Membre. Capitaine seul peut déclarer/accepter
+  les guerres et muter le rôle.
+- Politique : OPEN (rejoindre librement) ou INVITE_ONLY.
+
+## Guerre de clubs (style Clash of Clans)
+
+- Capitaine A propose la guerre au club B avec une mise. Les deux trésors
+  bloquent la mise. Durée 1 à 14 jours (par défaut 7).
+- Pendant la guerre, chaque membre accumule des points :
+  - Victoire défi (challenge) → +100 pts
+  - Victoire duel 1v1 → +150 pts
+  - PR vérifié → +VDOT/2 pts (à venir)
+- À l'issue : club avec le plus de points gagne le pot, **vig 5 %** prélevé.
+- Distribution : 50 % au trésor du club gagnant, 50 % réparti aux contributeurs
+  du club gagnant au prorata de leurs points.
+- Égalité parfaite → mises rendues aux deux clubs.
+- Reset auto des warPoints des deux camps après règlement.
+
+Le cron `/api/wars/cron` doit tourner régulièrement (Vercel cron) pour
+expirer les guerres dépassées et les duels.
+
 ## Anti-sandbagging & calibration des défis
 
 Le risque évident d'un défi auto-arbitré : créer une cible trivialement à

@@ -17,13 +17,32 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!parsed.success) return NextResponse.json({ error: "bad" }, { status: 400 });
   const data = parsed.data;
 
-  const c = await prisma.challenge.findUnique({ where: { id: params.id } });
+  const c = await prisma.challenge.findUnique({
+    where: { id: params.id },
+    include: { owner: { select: { id: true, referredById: true, referrals: { select: { id: true } } } } },
+  });
   if (!c) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (c.status !== "OPEN") return NextResponse.json({ error: "défi clos" }, { status: 400 });
   if (c.deadline.getTime() <= Date.now())
     return NextResponse.json({ error: "deadline passée" }, { status: 400 });
   if (c.ownerId === session.user.id)
     return NextResponse.json({ error: "Le créateur ne peut pas reparier (sa mise YES est figée)." }, { status: 400 });
+
+  // Anti-collusion : un parrain et son filleul direct ne peuvent pas parier
+  // l'un contre l'autre sur un défi (vecteur de redirection de jetons).
+  const linkedToOwner =
+    c.owner.referredById === session.user.id ||
+    c.owner.referrals.some((r) => r.id === session.user.id);
+  if (linkedToOwner) {
+    return NextResponse.json(
+      { error: "Tu es lié au créateur par parrainage : pari interdit (anti-collusion)." },
+      { status: 403 },
+    );
+  }
+
+  const bettor = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!bettor || bettor.banned)
+    return NextResponse.json({ error: "Compte non habilité." }, { status: 403 });
 
   // Plafond par parieur = maxBetStake. Cumul des paris du même user contrôlé.
   const myExisting = await prisma.challengeBet.aggregate({
@@ -40,15 +59,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  const me = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!me || me.tokens < data.stake)
+  if (bettor.tokens < data.stake)
     return NextResponse.json({ error: "Solde insuffisant." }, { status: 400 });
 
   const oddsX100 = data.side === "YES" ? c.oddsYesX100 : c.oddsNoX100;
 
   const bet = await prisma.$transaction(async (tx) => {
     await tx.user.update({
-      where: { id: me.id },
+      where: { id: bettor.id },
       data: {
         tokens: { decrement: data.stake },
         tokenLogs: { create: { delta: -data.stake, reason: "CHALLENGE_BET", ref: c.id } },
@@ -57,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return tx.challengeBet.create({
       data: {
         challengeId: c.id,
-        bettorId: me.id,
+        bettorId: bettor.id,
         side: data.side,
         stake: data.stake,
         oddsX100,

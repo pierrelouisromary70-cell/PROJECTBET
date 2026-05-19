@@ -44,6 +44,12 @@ model User {
   lastDailyBonusAt  DateTime?
   loginStreak       Int      @default(0)
 
+  // Anti-fraude
+  emailVerified     Boolean  @default(false)
+  emailVerifyToken  String?  @unique
+  banned            Boolean  @default(false)
+  banReason         String?
+
   profile       RunnerProfile?
   prs           PersonalRecord[]   @relation("UserPRs")
   prVotes       PRVote[]
@@ -59,6 +65,14 @@ model User {
 
   challenges    Challenge[]        @relation("ChallengeOwner")
   challengeBets ChallengeBet[]
+
+  duelsAsChallenger Duel[]  @relation("DuelChallenger")
+  duelsAsOpponent   Duel[]  @relation("DuelOpponent")
+  duelBets          DuelBet[]
+
+  clubMember        ClubMember?
+  clubsCaptained    Club[]   @relation("ClubCaptain")
+  warContributions  ClubWarContribution[]
 }
 
 model RunnerProfile {
@@ -347,4 +361,135 @@ model ChallengeBet {
   createdAt   DateTime @default(now())
 
   @@index([challengeId, status])
+}
+
+// ============== DUELS 1v1 ==============
+// Deux coureurs se défient directement sur une même métrique. Ils s'engagent
+// avec la même mise (pot = 2 × stake). Les spectateurs parient en plus.
+
+model Duel {
+  id              String   @id @default(cuid())
+  challengerId    String
+  challenger      User     @relation("DuelChallenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  opponentId      String
+  opponent        User     @relation("DuelOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+
+  kind            String   // FASTEST_TIME (chrono sur distance) | LONG_RUN (sortie la plus longue) | VOLUME (km cumulés)
+  targetDistanceM Int?     // pour FASTEST_TIME et LONG_RUN
+  deadline        DateTime
+
+  // Confiance moyenne au moment de la création (sert au plafond des paris spectateurs)
+  confidence      Float    @default(0.5)
+
+  // Cotes initiales basées sur les VDOT — figées à l'acceptation.
+  oddsChallengerX100 Int   @default(200)
+  oddsOpponentX100   Int   @default(200)
+  maxBetStake     Int      @default(2000)
+
+  stakePerSide    Int
+  pot             Int      @default(0) // alimenté par les deux mises
+
+  status          String   @default("PROPOSED") // PROPOSED | OPEN | RESOLVED_CHALLENGER | RESOLVED_OPPONENT | DRAW | CANCELED | EXPIRED
+  acceptedAt      DateTime?
+  resolvedAt      DateTime?
+
+  challengerResult Int?    // selon kind : secondes pour FASTEST_TIME, mètres pour LONG_RUN/VOLUME
+  opponentResult   Int?
+  challengerEvidence String?
+  opponentEvidence String?
+
+  bets            DuelBet[]
+  createdAt       DateTime @default(now())
+
+  @@index([status, deadline])
+}
+
+model DuelBet {
+  id        String   @id @default(cuid())
+  duelId    String
+  duel      Duel     @relation(fields: [duelId], references: [id], onDelete: Cascade)
+  bettorId  String
+  bettor    User     @relation(fields: [bettorId], references: [id], onDelete: Cascade)
+
+  pickedId  String   // challenger ou opponent
+  stake     Int
+  oddsX100  Int
+
+  status    String   @default("OPEN") // OPEN | WON | LOST | VOID
+  payout    Int      @default(0)
+  settledAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([duelId, status])
+}
+
+// ============== CLUBS ==============
+
+model Club {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  tag         String   @unique // 3-5 chars, type [RUN]
+  emoji       String   @default("🏃")
+  description String?
+  captainId   String
+  captain     User     @relation("ClubCaptain", fields: [captainId], references: [id])
+  treasury    Int      @default(0)
+  joinPolicy  String   @default("OPEN") // OPEN | INVITE_ONLY
+  warsAttack  ClubWar[] @relation("WarClubA")
+  warsDefend  ClubWar[] @relation("WarClubB")
+  members     ClubMember[]
+  createdAt   DateTime @default(now())
+}
+
+model ClubMember {
+  id        String   @id @default(cuid())
+  clubId    String
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId    String   @unique  // un user dans 1 seul club à la fois
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("MEMBER") // CAPTAIN | OFFICER | MEMBER
+  warPoints Int      @default(0)        // cumul du war courant
+  joinedAt  DateTime @default(now())
+
+  @@index([clubId])
+}
+
+// ============== GUERRE DE CLUBS ==============
+
+model ClubWar {
+  id           String   @id @default(cuid())
+  clubAId      String
+  clubA        Club     @relation("WarClubA", fields: [clubAId], references: [id])
+  clubBId      String
+  clubB        Club     @relation("WarClubB", fields: [clubBId], references: [id])
+
+  startAt      DateTime @default(now())
+  endAt        DateTime
+  stakePerSide Int
+  pot          Int      @default(0)
+  status       String   @default("PROPOSED") // PROPOSED | ACTIVE | RESOLVED | CANCELED
+  acceptedAt   DateTime?
+  resolvedAt   DateTime?
+  winnerId     String?
+
+  scoreA       Int      @default(0)
+  scoreB       Int      @default(0)
+  contributions ClubWarContribution[]
+
+  @@index([status])
+}
+
+model ClubWarContribution {
+  id        String   @id @default(cuid())
+  warId     String
+  war       ClubWar  @relation(fields: [warId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clubId    String   // camp
+  source    String   // CHALLENGE_WIN | DUEL_WIN | PR_VERIFIED | ACTIVITY_KM
+  sourceRef String?
+  points    Int
+  createdAt DateTime @default(now())
+
+  @@index([warId, clubId])
 }

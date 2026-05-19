@@ -18,13 +18,14 @@ export default function Header() {
         <Link href="/" className="font-extrabold tracking-tight text-lg">
           🏃 RunnerBet
         </Link>
-        <nav className="flex items-center gap-4 text-sm text-white/80">
+        <nav className="flex items-center gap-4 text-sm text-white/80 flex-wrap">
           <Link href="/challenges" className="hover:text-white">Défis</Link>
+          <Link href="/duels" className="hover:text-white">Duels</Link>
           <Link href="/races" className="hover:text-white">Courses</Link>
+          <Link href="/clubs" className="hover:text-white">Clubs</Link>
           <Link href="/bets" className="hover:text-white">Mes paris</Link>
           <Link href="/shop" className="hover:text-white">Boutique</Link>
           <Link href="/leaderboard" className="hover:text-white">Classement</Link>
-          <Link href="/validate" className="hover:text-white">Valider</Link>
           <Link href="/buy-tokens" className="hover:text-white">+ Jetons</Link>
         </nav>
         <div className="ml-auto flex items-center gap-3 text-sm">

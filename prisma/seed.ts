@@ -144,6 +144,53 @@ async function main() {
     console.log("  challenge:", challenge.id, "—", description, "@", oddsYes.toFixed(2), "/", oddsNo.toFixed(2));
   }
 
+  console.log("Seeding démo clubs & duel…");
+  const sara = await prisma.user.findUnique({ where: { email: "sara@demo.run" } });
+  const leo = await prisma.user.findUnique({ where: { email: "leo@demo.run" } });
+  if (alex && marie && sara && leo) {
+    // Club "Speed Runners" [SPD] capitaine Alex
+    const spd = await prisma.club.upsert({
+      where: { name: "Speed Runners" },
+      update: {},
+      create: {
+        name: "Speed Runners", tag: "SPD", emoji: "⚡",
+        description: "Pour les piqués de vitesse.", captainId: alex.id, treasury: 2000,
+      },
+    });
+    await prisma.clubMember.upsert({
+      where: { userId: alex.id },
+      update: {},
+      create: { clubId: spd.id, userId: alex.id, role: "CAPTAIN" },
+    });
+    await prisma.clubMember.upsert({
+      where: { userId: sara.id },
+      update: {},
+      create: { clubId: spd.id, userId: sara.id, role: "OFFICER" },
+    });
+
+    // Club "Endurance Squad" [END] capitaine Leo
+    const end = await prisma.club.upsert({
+      where: { name: "Endurance Squad" },
+      update: {},
+      create: {
+        name: "Endurance Squad", tag: "END", emoji: "🏔️",
+        description: "Long et lent, ça gagne aussi.", captainId: leo.id, treasury: 2000,
+      },
+    });
+    await prisma.clubMember.upsert({
+      where: { userId: leo.id },
+      update: {},
+      create: { clubId: end.id, userId: leo.id, role: "CAPTAIN" },
+    });
+    await prisma.clubMember.upsert({
+      where: { userId: marie.id },
+      update: {},
+      create: { clubId: end.id, userId: marie.id, role: "MEMBER" },
+    });
+
+    console.log("  clubs:", spd.id, end.id);
+  }
+
   console.log("Done.");
 }
 

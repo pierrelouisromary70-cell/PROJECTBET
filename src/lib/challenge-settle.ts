@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { checkProfileAchievements } from "./achievements";
 import { vdotFromPerf } from "./vdot";
 import { HUMAN_VDOT_CEILING } from "./anti-cheat";
+import { addWarContribution } from "./club-war";
 
 // Si un défi TIME a été réussi via une activité Strava, on crée
 // automatiquement un PR vérifié et on remonte le VDOT. C'est ce qui
@@ -145,6 +146,13 @@ export async function settleChallenge(
   if (outcome === "YES") {
     await autoCreatePRFromChallengeWin(challengeId);
     await checkOwnerPatternAndAdjustTrust(c.ownerId);
+    // Contribution à la guerre du club du créateur s'il y en a une.
+    await addWarContribution({
+      userId: c.ownerId,
+      points: 100,
+      source: "CHALLENGE_WIN",
+      sourceRef: c.id,
+    });
   }
 
   const bettors = Array.from(new Set(c.bets.map((b) => b.bettorId)));
