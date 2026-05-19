@@ -96,6 +96,11 @@ export async function POST(req: NextRequest) {
       { error: "Les deux coureurs doivent avoir au moins un chrono certifié." },
       { status: 400 },
     );
+  if (!challenger.user.phoneVerified || !opponent.user.phoneVerified)
+    return NextResponse.json(
+      { error: "Téléphone non vérifié sur l'un des comptes (anti-doublon)." },
+      { status: 400 },
+    );
 
   // Anti-collusion : pas de duel entre parrain/filleul direct.
   const linked =

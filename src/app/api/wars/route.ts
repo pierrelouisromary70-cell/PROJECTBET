@@ -54,6 +54,45 @@ export async function POST(req: NextRequest) {
   });
   if (busyB) return NextResponse.json({ error: "Le club adverse est déjà engagé dans une guerre." }, { status: 400 });
 
+  // Anti-collusion entre clubs : pas deux fois les mêmes adversaires en 30 jours.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+  const recentSamePair = await prisma.clubWar.findFirst({
+    where: {
+      status: "RESOLVED",
+      resolvedAt: { gt: thirtyDaysAgo },
+      OR: [
+        { clubAId: member.clubId, clubBId: data.opponentClubId },
+        { clubAId: data.opponentClubId, clubBId: member.clubId },
+      ],
+    },
+  });
+  if (recentSamePair) {
+    const daysSince = Math.floor(
+      (Date.now() - recentSamePair.resolvedAt!.getTime()) / 86400000,
+    );
+    return NextResponse.json(
+      {
+        error: `Vous vous êtes déjà affrontés il y a ${daysSince} jour(s). Attendez ${30 - daysSince} jour(s) (anti-collusion entre clubs).`,
+      },
+      { status: 429 },
+    );
+  }
+
+  // Anti-grinding : max 4 guerres terminées par club et par 30 jours.
+  const recentCount = await prisma.clubWar.count({
+    where: {
+      status: "RESOLVED",
+      resolvedAt: { gt: thirtyDaysAgo },
+      OR: [{ clubAId: member.clubId }, { clubBId: member.clubId }],
+    },
+  });
+  if (recentCount >= 4) {
+    return NextResponse.json(
+      { error: "Ton club a atteint la limite mensuelle de guerres (4 / 30 jours)." },
+      { status: 429 },
+    );
+  }
+
   if (member.club.treasury < data.stakePerSide)
     return NextResponse.json({ error: "Le trésor de ton club est insuffisant." }, { status: 400 });
 

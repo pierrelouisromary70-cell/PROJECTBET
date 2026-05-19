@@ -166,6 +166,7 @@ export function checkOwnerEligibility(args: {
   createdAt: Date;
   trustScore: number;
   hasStrava: boolean;
+  phoneVerified?: boolean;
   prs: Array<{ status: string; distanceM: number; raceDate: Date }>;
   recentlySettledChallenges: Array<{ resolvedAt: Date | null }>;
   vdot: number;
@@ -187,6 +188,12 @@ export function checkOwnerEligibility(args: {
   if (ageDays < MIN_ACCOUNT_AGE_DAYS) {
     return denied(
       `Compte trop récent (< ${MIN_ACCOUNT_AGE_DAYS} jours). Reviens plus tard.`,
+    );
+  }
+
+  if (args.phoneVerified === false) {
+    return denied(
+      "Téléphone non vérifié. Lie un numéro avant de créer un défi (anti-doublon).",
     );
   }
 

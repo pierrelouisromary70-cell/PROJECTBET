@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     include: { clubMember: true, prs: { where: { status: "VERIFIED" }, take: 1 } },
   });
   if (!me || me.banned) return NextResponse.json({ error: "Compte non habilité." }, { status: 403 });
+  if (!me.phoneVerified)
+    return NextResponse.json({ error: "Téléphone non vérifié (requis pour fonder un club)." }, { status: 400 });
   if (me.clubMember)
     return NextResponse.json({ error: "Tu es déjà dans un club (1 club à la fois)." }, { status: 400 });
   if (me.prs.length === 0)

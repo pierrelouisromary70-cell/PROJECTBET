@@ -17,6 +17,7 @@ type Loadout = {
 type Me = {
   id: string; displayName: string; tokens: number; trustScore: number; stravaId?: string | null;
   referralCode: string; loginStreak: number; lastDailyBonusAt?: string | null;
+  phoneE164?: string | null; phoneVerified?: boolean;
   profile: {
     vdot: number; gender: string; skinTone: string; selectedTitle?: string | null;
     equippedShoes?: string | null; equippedShirt?: string | null; equippedShorts?: string | null;
@@ -44,6 +45,9 @@ export default function ProfilePage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [newLoadoutName, setNewLoadoutName] = useState("");
+  const [phoneInput, setPhoneInput] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneDevCode, setPhoneDevCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -144,6 +148,29 @@ export default function ProfilePage() {
 
   async function deleteLoadout(id: string) {
     await fetch(`/api/loadouts/${id}`, { method: "DELETE" });
+    await load();
+  }
+
+  async function startPhone() {
+    const r = await fetch("/api/phone/start", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phoneE164: phoneInput }),
+    });
+    const j = await r.json();
+    if (!r.ok) { setMsg(typeof j.error === "string" ? j.error : "Erreur."); return; }
+    setMsg("Code envoyé.");
+    if (j.devCode) setPhoneDevCode(j.devCode);
+    await load();
+  }
+  async function verifyPhone() {
+    const r = await fetch("/api/phone/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: phoneCode }),
+    });
+    const j = await r.json();
+    if (!r.ok) { setMsg(j.error ?? "Erreur."); return; }
+    setMsg("Téléphone vérifié ✓");
+    setPhoneDevCode(null);
     await load();
   }
 
@@ -274,6 +301,32 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="card">
+        <h3 className="font-bold">📱 Téléphone</h3>
+        {me.phoneVerified ? (
+          <p className="text-sm text-emerald-300 mt-1">Numéro vérifié ✓ ({me.phoneE164})</p>
+        ) : (
+          <>
+            <p className="text-sm text-white/70 mt-1">
+              Lie un numéro pour débloquer défis, duels et clubs (anti-doublon, 1 numéro = 1 compte).
+            </p>
+            <div className="flex gap-2 mt-3">
+              <input className="input flex-1" placeholder="+33612345678" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} />
+              <button className="btn-primary" onClick={startPhone}>Envoyer SMS</button>
+            </div>
+            {(phoneDevCode || me.phoneE164) && (
+              <div className="flex gap-2 mt-2">
+                <input className="input flex-1" placeholder="code 6 chiffres" value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} maxLength={6} />
+                <button className="btn-primary" onClick={verifyPhone}>Vérifier</button>
+              </div>
+            )}
+            {phoneDevCode && (
+              <p className="text-xs text-amber-300 mt-2">Mode dev — code : <code>{phoneDevCode}</code></p>
+            )}
+          </>
+        )}
       </div>
 
       <div className="card">

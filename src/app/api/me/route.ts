@@ -16,5 +16,10 @@ export async function GET() {
       referrals: { select: { id: true, displayName: true, createdAt: true } },
     },
   });
-  return NextResponse.json(user);
+  if (!user) return NextResponse.json(null);
+  // On ne renvoie pas le code SMS.
+  const { phoneVerifyCode, phoneVerifyExpiresAt, ...safe } = user;
+  void phoneVerifyCode;
+  void phoneVerifyExpiresAt;
+  return NextResponse.json(safe);
 }

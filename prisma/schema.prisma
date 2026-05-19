@@ -50,6 +50,12 @@ model User {
   banned            Boolean  @default(false)
   banReason         String?
 
+  // Identification unique par téléphone (E.164, ex +33612345678)
+  phoneE164         String?  @unique
+  phoneVerified     Boolean  @default(false)
+  phoneVerifyCode   String?
+  phoneVerifyExpiresAt DateTime?
+
   profile       RunnerProfile?
   prs           PersonalRecord[]   @relation("UserPRs")
   prVotes       PRVote[]

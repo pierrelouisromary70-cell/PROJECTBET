@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
     createdAt: me.createdAt,
     trustScore: me.trustScore,
     hasStrava: !!me.stravaId,
+    phoneVerified: me.phoneVerified,
     prs: me.prs.map((p) => ({ status: p.status, distanceM: p.distanceM, raceDate: p.raceDate })),
     recentlySettledChallenges: me.challenges,
     vdot: me.profile?.vdot ?? 30,
