@@ -12,6 +12,8 @@ export async function GET() {
       profile: true,
       prs: { orderBy: { raceDate: "desc" } },
       inventory: { include: { item: true } },
+      achievements: true,
+      referrals: { select: { id: true, displayName: true, createdAt: true } },
     },
   });
   return NextResponse.json(user);

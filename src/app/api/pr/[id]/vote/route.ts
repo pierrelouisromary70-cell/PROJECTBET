@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { APPROVAL_THRESHOLD } from "@/lib/anti-cheat";
 import { vdotFromPerf } from "@/lib/vdot";
+import { maybeRewardReferrerOnFirstPR } from "@/lib/referral-hooks";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 const Body = z.object({ approve: z.boolean() });
 
@@ -41,6 +43,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const newVdot = Math.max(profile.vdot, vdotFromPerf(pr.distanceM, pr.timeSec));
       await prisma.runnerProfile.update({ where: { userId: pr.userId }, data: { vdot: newVdot } });
     }
+    await maybeRewardReferrerOnFirstPR(pr.userId);
+    await checkProfileAchievements(pr.userId);
   } else if (score <= -APPROVAL_THRESHOLD) {
     await prisma.personalRecord.update({ where: { id: pr.id }, data: { status: "REJECTED" } });
   }

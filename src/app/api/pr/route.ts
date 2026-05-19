@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validatePRSubmission } from "@/lib/anti-cheat";
 import { vdotFromPerf } from "@/lib/vdot";
+import { maybeRewardReferrerOnFirstPR } from "@/lib/referral-hooks";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 const Body = z.object({
   distanceM: z.number().int().positive(),
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
         tokenLogs: { create: { delta: 25, reason: "PR_VERIFIED_BONUS", ref: pr.id } },
       },
     });
+    await maybeRewardReferrerOnFirstPR(session.user.id);
+    await checkProfileAchievements(session.user.id);
   }
 
   return NextResponse.json({ pr, status, needsReview: !!check.needsCommunityReview });

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 // Règle une course : chronos finaux pour chaque participant.
 // Distribue ensuite les gains des paris.
@@ -76,6 +77,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
     await tx.race.update({ where: { id: race.id }, data: { status: "SETTLED" } });
   });
+
+  // Vérifie achievements sur les parieurs (FIRST_WIN, BIG_WIN).
+  const bettors = Array.from(new Set(race.bets.map((b) => b.bettorId)));
+  for (const id of bettors) await checkProfileAchievements(id);
 
   return NextResponse.json({ ok: true });
 }

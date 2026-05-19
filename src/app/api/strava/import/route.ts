@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { vdotFromPerf } from "@/lib/vdot";
+import { maybeRewardReferrerOnFirstPR } from "@/lib/referral-hooks";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 // Importe les activités Strava "Run" et crée des PRs vérifiés
 // pour chaque distance standard où l'utilisateur a une meilleure perf.
@@ -68,6 +70,11 @@ export async function POST() {
       where: { userId: user.id },
       data: { vdot: bestVdot },
     });
+  }
+
+  if (created > 0) {
+    await maybeRewardReferrerOnFirstPR(user.id);
+    await checkProfileAchievements(user.id);
   }
 
   return NextResponse.json({ created });

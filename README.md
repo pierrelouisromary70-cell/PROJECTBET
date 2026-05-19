@@ -27,6 +27,17 @@ Application de paris virtuels entre coureurs à pied. Les cotes sont calculées
   Oakley Radar EV, District Vision…
 - 🧍 Avatar customisable par emojis (par catégorie d'équipement).
 - 📺 **Pubs** : jusqu'à 5 vidéos / jour, 10 jetons chacune.
+- 🤝 **Parrainage** : code unique par utilisateur, +100 jetons à l'inscription
+  du filleul, +200 à son 1ᵉʳ chrono vérifié, +200 à son 1ᵉʳ pari. Le filleul
+  reçoit 50 jetons en bienvenue.
+- 💳 **Achats de jetons** : 4 packs (Découverte, Runner, Athlete, Elite) avec
+  bonus croissants. Stripe Checkout en prod ; mode démo activé si
+  `STRIPE_SECRET_KEY` est vide (confirmation in-app pour pouvoir tester le flux).
+- 🔥 **Streak quotidien** : bonus de 5 → 50 jetons progressif sur 7 jours,
+  +200 jetons aux paliers de 30 jours.
+- 🏅 **15 succès** : 1ᵉʳ pari, 1ᵉʳ chrono, BIG_WIN à cote ≥ 5, paliers VDOT
+  50/60/70, CARBON_OWNER, FULL_OUTFIT, REFERRER_1/5/25, MARATHON_FINISHER…
+- 📊 **Classements** : tokens, VDOT, taux de paris gagnés.
 
 ## Stack
 
@@ -78,11 +89,26 @@ données (Strava récent vs manuel non vérifié) resserre la cote en cas de dou
 | Cote figée au moment du pari | Pas de manipulation a posteriori |
 | Trust score utilisateur | Pondère la confiance des cotes |
 
+## Stripe en prod
+
+Pour activer les paiements réels :
+
+1. Renseigne `STRIPE_SECRET_KEY` et `STRIPE_WEBHOOK_SECRET` dans `.env`.
+2. Crée un endpoint webhook côté Stripe pointant sur `/api/packs/webhook`
+   avec l'événement `checkout.session.completed`.
+3. C'est tout — `/api/packs/checkout` détecte la clé et passe en mode Stripe.
+
+Sans clé Stripe, le système crée la commande en DEMO et propose une page
+interne `/buy-tokens/confirm/[id]` qui complète l'achat instantanément.
+Idéal pour le dev.
+
 ## Roadmap (idées futures)
 
 - Suspension après n PRs rejetés
 - Cotes dynamiques type "marché" (book maker automatisé)
-- Saison & classements
+- Saisons (reset mensuel / récompenses)
 - Notifications quand un coureur que tu suis publie un PR
 - App mobile React Native (partage du backend)
 - Mode "course chronométrée live" via webhook Strava
+- Cosmétiques exclusifs achetables uniquement avec un certain VDOT
+- Système de clubs / équipes

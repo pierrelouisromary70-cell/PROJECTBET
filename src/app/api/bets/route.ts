@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { computeMatchupOdds, oddsToInt } from "@/lib/odds";
+import { maybeRewardReferrerOnFirstBet } from "@/lib/referral-hooks";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 const Body = z.object({
   raceId: z.string(),
@@ -98,6 +100,9 @@ export async function POST(req: NextRequest) {
       },
     });
   });
+
+  await maybeRewardReferrerOnFirstBet(bettor.id);
+  await checkProfileAchievements(bettor.id);
 
   return NextResponse.json({ bet, oddsAtTime: pickedOdds });
 }

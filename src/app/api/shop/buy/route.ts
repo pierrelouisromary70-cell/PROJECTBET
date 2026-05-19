@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkProfileAchievements } from "@/lib/achievements";
 
 const Body = z.object({ itemId: z.string() });
 
@@ -37,5 +38,6 @@ export async function POST(req: NextRequest) {
     prisma.inventoryItem.create({ data: { userId: user.id, itemId: item.id } }),
   ]);
 
+  await checkProfileAchievements(user.id);
   return NextResponse.json({ ok: true });
 }

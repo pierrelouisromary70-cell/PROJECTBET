@@ -1,18 +1,25 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     email: "",
     password: "",
     displayName: "",
     gender: "M",
     birthYear: 1995,
+    referralCode: "",
   });
   const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) setForm((f) => ({ ...f, referralCode: ref.toUpperCase() }));
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +27,11 @@ export default function RegisterPage() {
     const r = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, birthYear: Number(form.birthYear) }),
+      body: JSON.stringify({
+        ...form,
+        birthYear: Number(form.birthYear),
+        referralCode: form.referralCode.trim() || undefined,
+      }),
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({}));
@@ -56,9 +67,24 @@ export default function RegisterPage() {
             <input className="input" type="number" value={form.birthYear} onChange={(e) => setForm({ ...form, birthYear: Number(e.target.value) })} />
           </div>
         </div>
+        <div>
+          <label className="label">Code parrain (optionnel)</label>
+          <input className="input uppercase" value={form.referralCode}
+            onChange={(e) => setForm({ ...form, referralCode: e.target.value.toUpperCase() })}
+            placeholder="ex : K7Q3P2X" />
+          <p className="text-xs text-white/50 mt-1">+50 jetons pour toi, +100 pour ton parrain.</p>
+        </div>
         {err && <p className="text-red-400 text-sm">{err}</p>}
         <button className="btn-primary w-full" type="submit">Créer</button>
       </form>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<p className="text-white/60 text-center mt-10">Chargement…</p>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

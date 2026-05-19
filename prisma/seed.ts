@@ -5,6 +5,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { CATALOG } from "../src/lib/shop-catalog";
 import { vdotFromPerf } from "../src/lib/vdot";
+import { generateReferralCode } from "../src/lib/referral";
 
 const prisma = new PrismaClient();
 
@@ -45,6 +46,7 @@ async function main() {
         passwordHash: hash,
         tokens: 500,
         trustScore: 70,
+        referralCode: generateReferralCode(),
       },
     });
 

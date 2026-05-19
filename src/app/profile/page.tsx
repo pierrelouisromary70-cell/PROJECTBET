@@ -4,12 +4,16 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { STANDARD_DISTANCES, formatTime, parseTimeToSec, predictTimeSec } from "@/lib/vdot";
+import { ACH_BY_CODE, ACHIEVEMENTS } from "@/lib/achievements";
 
 type Me = {
   id: string; displayName: string; tokens: number; trustScore: number; stravaId?: string | null;
+  referralCode: string; loginStreak: number; lastDailyBonusAt?: string | null;
   profile: { vdot: number; equippedShoes?: string | null; equippedShirt?: string | null; equippedShorts?: string | null; equippedSocks?: string | null; equippedCap?: string | null; equippedGlasses?: string | null } | null;
   prs: Array<{ id: string; distanceM: number; timeSec: number; raceDate: string; source: string; status: string; evidenceUrl?: string | null }>;
   inventory: Array<{ item: { id: string; brand: string; model: string; category: string; tier: string; imageEmoji: string } }>;
+  achievements: Array<{ code: string; unlockedAt: string }>;
+  referrals: Array<{ id: string; displayName: string; createdAt: string }>;
 };
 
 export default function ProfilePage() {
@@ -19,6 +23,7 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ distanceM: 10000, time: "", source: "OFFICIAL", evidenceUrl: "", raceDate: new Date().toISOString().slice(0, 10) });
   const [adsRemaining, setAdsRemaining] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -71,6 +76,14 @@ export default function ProfilePage() {
     await load();
   }
 
+  async function claimDaily() {
+    const r = await fetch("/api/daily", { method: "POST" });
+    const j = await r.json();
+    if (j.granted) setMsg(`Bonus quotidien : +${j.reward} jetons. Série de ${j.streak} jour(s) 🔥`);
+    else setMsg(j.alreadyClaimed ? "Bonus déjà réclamé aujourd'hui." : "Bonus indisponible.");
+    await load();
+  }
+
   async function equip(itemId: string) {
     await fetch("/api/shop/equip", {
       method: "POST",
@@ -80,8 +93,20 @@ export default function ProfilePage() {
     await load();
   }
 
+  async function copyInvite() {
+    if (!me) return;
+    const url = `${window.location.origin}/register?ref=${me.referralCode}`;
+    await navigator.clipboard.writeText(url).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (!me) return <p className="text-white/60">Chargement…</p>;
   const vdot = me.profile?.vdot ?? 30;
+  const today = new Date().toISOString().slice(0, 10);
+  const lastClaim = me.lastDailyBonusAt?.slice(0, 10);
+  const canClaim = lastClaim !== today;
+  const unlocked = new Set(me.achievements.map((a) => a.code));
 
   return (
     <div className="space-y-6">
@@ -92,6 +117,7 @@ export default function ProfilePage() {
             <span className="chip">VDOT {vdot.toFixed(1)}</span>
             <span className="chip">Confiance {me.trustScore}/100</span>
             <span className="chip">🪙 {me.tokens.toLocaleString("fr-FR")}</span>
+            <span className="chip">🔥 Série {me.loginStreak}</span>
             {me.stravaId && <span className="chip">Strava ✔︎</span>}
           </div>
 
@@ -108,13 +134,22 @@ export default function ProfilePage() {
         <div className="space-y-3">
           <Avatar profile={me.profile} />
           <div className="card">
+            <h3 className="font-bold">🔥 Bonus quotidien</h3>
+            <p className="text-sm text-white/70 mt-1">Série de {me.loginStreak} jour(s). Reviens chaque jour pour grossir le bonus.</p>
+            <button
+              className="btn-gold mt-3 w-full"
+              disabled={!canClaim}
+              onClick={claimDaily}>
+              {canClaim ? "Réclamer mon bonus" : "Déjà réclamé"}
+            </button>
+          </div>
+          <div className="card">
             <h3 className="font-bold">📺 Pubs du jour</h3>
-            <p className="text-sm text-white/70 mt-1">Gagne 10 jetons par vidéo (max 5/jour).</p>
+            <p className="text-sm text-white/70 mt-1">10 jetons / vidéo (max 5/jour).</p>
             <button
               className="btn-gold mt-3 w-full"
               disabled={!adsRemaining}
-              onClick={watchAd}
-            >
+              onClick={watchAd}>
               {adsRemaining ? `Voir une pub (${adsRemaining} restantes)` : "Limite atteinte"}
             </button>
           </div>
@@ -122,6 +157,51 @@ export default function ProfilePage() {
       </div>
 
       {msg && <div className="card text-sm">{msg}</div>}
+
+      <div className="card">
+        <h3 className="font-bold">🤝 Parrainage</h3>
+        <p className="text-sm text-white/70 mt-1">
+          Invite des amis : +100 jetons à l'inscription, +200 à leur 1<sup>er</sup> chrono vérifié,
+          +200 à leur 1<sup>er</sup> pari. Eux reçoivent 50 jetons.
+        </p>
+        <div className="flex items-center gap-2 mt-3">
+          <code className="bg-black/30 px-3 py-2 rounded-xl border border-white/10 text-lg tracking-widest">
+            {me.referralCode}
+          </code>
+          <button className="btn-ghost" onClick={copyInvite}>
+            {copied ? "Lien copié ✓" : "Copier le lien d'invitation"}
+          </button>
+        </div>
+        {me.referrals.length > 0 && (
+          <div className="mt-3 text-sm">
+            <div className="text-white/60 mb-1">Filleuls ({me.referrals.length}) :</div>
+            <div className="flex flex-wrap gap-2">
+              {me.referrals.map((r) => <span key={r.id} className="chip">{r.displayName}</span>)}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3 className="font-bold mb-3">🏅 Succès ({me.achievements.length}/{ACHIEVEMENTS.length})</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {ACHIEVEMENTS.map((a) => {
+            const got = unlocked.has(a.code);
+            const def = ACH_BY_CODE[a.code];
+            return (
+              <div key={a.code}
+                className={`p-3 rounded-xl border ${got ? "border-amber-300/40 bg-amber-300/5" : "border-white/5 bg-white/2 opacity-60"}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{def.emoji}</span>
+                  <div className="text-sm font-semibold">{def.title}</div>
+                </div>
+                <div className="text-xs text-white/70 mt-1">{def.description}</div>
+                <div className="text-xs text-white/40 mt-1">+{def.reward} 🪙</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="card">

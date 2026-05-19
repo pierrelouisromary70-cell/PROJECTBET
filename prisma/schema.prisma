@@ -32,6 +32,18 @@ model User {
   // Réputation / anti-triche
   trustScore    Int      @default(50) // 0-100
 
+  // Parrainage
+  referralCode      String   @unique
+  referredById      String?
+  referredBy        User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals         User[]   @relation("Referrals")
+  referralFirstPRDone   Boolean @default(false)
+  referralFirstBetDone  Boolean @default(false)
+
+  // Engagement
+  lastDailyBonusAt  DateTime?
+  loginStreak       Int      @default(0)
+
   profile       RunnerProfile?
   prs           PersonalRecord[]   @relation("UserPRs")
   prVotes       PRVote[]
@@ -39,6 +51,8 @@ model User {
   inventory     InventoryItem[]
   adViews       AdView[]
   tokenLogs     TokenLog[]
+  achievements  Achievement[]
+  purchases     TokenPurchase[]
 
   racesCreated  Race[]             @relation("RaceCreator")
   raceEntriesA  RaceEntry[]        @relation("RaceEntryRunner")
@@ -197,7 +211,38 @@ model TokenLog {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   delta     Int
-  reason    String   // BET_STAKE, BET_PAYOUT, AD_REWARD, PURCHASE, SIGNUP_BONUS, PR_VERIFIED_BONUS
+  reason    String   // BET_STAKE, BET_PAYOUT, AD_REWARD, PURCHASE, SIGNUP_BONUS, PR_VERIFIED_BONUS, REFERRAL_*, DAILY_STREAK, ACHIEVEMENT
   ref       String?  // id de l'objet associé
   createdAt DateTime @default(now())
+}
+
+// ============== ACHIEVEMENTS ==============
+
+model Achievement {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code       String   // voir lib/achievements.ts
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, code])
+}
+
+// ============== ACHATS DE JETONS ==============
+
+model TokenPurchase {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pack         String    // slug du pack
+  tokens       Int       // jetons (incl. bonus)
+  amountCents  Int       // prix payé en centimes
+  currency     String    @default("EUR")
+  provider     String    // STRIPE | DEMO
+  providerRef  String?   // session id côté provider
+  status       String    @default("PENDING") // PENDING | COMPLETED | FAILED
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  @@index([userId, status])
 }
