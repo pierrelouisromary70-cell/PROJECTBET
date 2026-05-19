@@ -105,11 +105,15 @@ async function main() {
   if (alex) {
     const profile = await prisma.runnerProfile.findUnique({ where: { userId: alex.id } });
     const vdot = profile?.vdot ?? 30;
-    const targetTimeSec = 50 * 60;
-    const p = probabilityOfSuccess({ kind: "TIME", vdot, targetDistanceM: 10000, targetTimeSec });
-    const { oddsYes, oddsNo, pYes } = challengeOdds(p);
+    // Défi tendu : 10k sub 34:00 (Alex a 35:00 / 10k, VDOT 60.7).
+    const targetTimeSec = 34 * 60;
+    const pRaw = probabilityOfSuccess({ kind: "TIME", vdot, targetDistanceM: 10000, targetTimeSec });
+    const confidence = 0.7;
+    const pShrunk = 0.5 + (pRaw - 0.5) * confidence;
+    const { oddsYes, oddsNo, pYes } = challengeOdds(pShrunk);
     const description = describeChallenge({ kind: "TIME", targetDistanceM: 10000, targetTimeSec });
     const stake = 100;
+    const maxBetStake = Math.max(100, Math.floor(5000 * confidence));
     const challenge = await prisma.challenge.create({
       data: {
         ownerId: alex.id,
@@ -118,9 +122,12 @@ async function main() {
         targetDistanceM: 10000,
         targetTimeSec,
         deadline: new Date(Date.now() + 48 * 3600 * 1000),
+        probRaw: pRaw,
         probSuccess: pYes,
+        confidence,
         oddsYesX100: Math.round(oddsYes * 100),
         oddsNoX100: Math.round(oddsNo * 100),
+        maxBetStake,
         ownerStake: stake,
       },
     });

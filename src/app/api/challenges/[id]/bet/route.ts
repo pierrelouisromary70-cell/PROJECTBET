@@ -25,6 +25,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (c.ownerId === session.user.id)
     return NextResponse.json({ error: "Le créateur ne peut pas reparier (sa mise YES est figée)." }, { status: 400 });
 
+  // Plafond par parieur = maxBetStake. Cumul des paris du même user contrôlé.
+  const myExisting = await prisma.challengeBet.aggregate({
+    where: { challengeId: c.id, bettorId: session.user.id },
+    _sum: { stake: true },
+  });
+  const alreadyStaked = myExisting._sum.stake ?? 0;
+  if (alreadyStaked + data.stake > c.maxBetStake) {
+    return NextResponse.json(
+      {
+        error: `Mise cumulée plafonnée à ${c.maxBetStake} 🪙 sur ce défi (déjà engagé : ${alreadyStaked}). Plafond lié à la confiance dans les données du coureur.`,
+      },
+      { status: 400 },
+    );
+  }
+
   const me = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!me || me.tokens < data.stake)
     return NextResponse.json({ error: "Solde insuffisant." }, { status: 400 });

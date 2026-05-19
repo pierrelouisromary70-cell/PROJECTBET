@@ -2,22 +2,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { formatTime, parseTimeToSec, STANDARD_DISTANCES } from "@/lib/vdot";
+import { parseTimeToSec, STANDARD_DISTANCES } from "@/lib/vdot";
 
 type Challenge = {
   id: string; kind: string; description: string;
   ownerId: string; owner: { displayName: string; profile: { vdot: number } | null };
   startAt: string; deadline: string; status: string;
-  probSuccess: number; oddsYesX100: number; oddsNoX100: number;
+  probSuccess: number; probRaw: number; confidence: number;
+  oddsYesX100: number; oddsNoX100: number; maxBetStake: number;
   ownerStake: number; yesPool: number; noPool: number;
   _count: { bets: number };
 };
 
+type Eligibility =
+  | { eligible: true; confidence: number; prAgeDays: number; maxOwnerStake: number; hasStrava: boolean }
+  | { eligible: false; reason: string; confidence?: number };
+
 const KIND_LABELS: Record<string, string> = {
-  TIME: "Chrono cible",
-  LONG_RUN: "Sortie longue",
-  VOLUME: "Volume",
-  STREAK: "Streak",
+  TIME: "Chrono cible", LONG_RUN: "Sortie longue", VOLUME: "Volume", STREAK: "Streak",
 };
 
 function countdown(d: string) {
@@ -29,33 +31,53 @@ function countdown(d: string) {
   return `${Math.floor(ms / 60000)} min`;
 }
 
+function ConfidenceBadge({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  const color =
+    value >= 0.7 ? "text-emerald-300"
+    : value >= 0.4 ? "text-amber-300"
+    : "text-red-300";
+  return <span className={`chip ${color}`} title="Fiabilité des données du coureur">🛡️ {pct} %</span>;
+}
+
 export default function ChallengesPage() {
   const { status } = useSession();
   const [items, setItems] = useState<Challenge[]>([]);
   const [scope, setScope] = useState<"open" | "mine" | "all">("open");
   const [creating, setCreating] = useState(false);
+  const [elig, setElig] = useState<Eligibility | null>(null);
 
   async function load() {
     const r = await fetch(`/api/challenges?scope=${scope}`).then((r) => r.json());
     setItems(r);
+    if (status === "authenticated") {
+      const e = await fetch("/api/challenges/eligibility").then((r) => r.json());
+      setElig(e);
+    }
   }
-  useEffect(() => { load(); }, [scope]);
+  useEffect(() => { load(); }, [scope, status]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold">Défis quotidiens</h1>
-        {status === "authenticated" && (
+        {status === "authenticated" && elig?.eligible && (
           <button className="btn-primary" onClick={() => setCreating((v) => !v)}>
             {creating ? "Annuler" : "+ Créer un défi"}
           </button>
         )}
       </div>
       <p className="text-white/70 text-sm">
-        Tu ne cours pas une compétition tous les week-ends ? Lance un défi sur
-        toi-même. Les autres parient pour ou contre ta réussite. Délai 12h à 14j.
-        Résolution par Strava ou preuve manuelle.
+        Tu ne cours pas une compétition tous les week-ends ? Lance un défi sur toi-même.
+        Les cotes sont calibrées par ton VDOT et un score de confiance dans tes données.
       </p>
+
+      {status === "authenticated" && elig && !elig.eligible && (
+        <div className="card border-amber-300/40 bg-amber-300/5">
+          <h3 className="font-bold">🛡️ Tu ne peux pas créer de défi pour le moment</h3>
+          <p className="text-sm text-white/80 mt-1">{elig.reason}</p>
+        </div>
+      )}
 
       <div className="flex gap-2">
         {(["open", "mine", "all"] as const).map((s) => (
@@ -66,7 +88,7 @@ export default function ChallengesPage() {
         ))}
       </div>
 
-      {creating && <CreateForm onDone={() => { setCreating(false); load(); }} />}
+      {creating && elig?.eligible && <CreateForm elig={elig} onDone={() => { setCreating(false); load(); }} />}
 
       <div className="grid md:grid-cols-2 gap-3">
         {items.map((c) => (
@@ -90,20 +112,29 @@ export default function ChallengesPage() {
                 <div className="text-xs text-white/40">Pool {c.noPool} 🪙</div>
               </div>
             </div>
-            <div className="text-xs text-white/40 mt-2">
-              {c._count.bets} pari(s) · proba estimée {(c.probSuccess * 100).toFixed(0)} %
+            <div className="text-xs text-white/40 mt-2 flex items-center gap-2 flex-wrap">
+              <span>{c._count.bets} pari(s)</span>
+              <span>· proba {(c.probSuccess * 100).toFixed(0)} %</span>
+              <ConfidenceBadge value={c.confidence} />
+              <span>· plafond/parieur {c.maxBetStake} 🪙</span>
             </div>
           </Link>
         ))}
         {items.length === 0 && (
-          <p className="text-white/60 text-sm">Aucun défi pour le moment. Lance le tien !</p>
+          <p className="text-white/60 text-sm">Aucun défi pour le moment.</p>
         )}
       </div>
     </div>
   );
 }
 
-function CreateForm({ onDone }: { onDone: () => void }) {
+function CreateForm({
+  elig,
+  onDone,
+}: {
+  elig: { eligible: true; confidence: number; prAgeDays: number; maxOwnerStake: number; hasStrava: boolean };
+  onDone: () => void;
+}) {
   const [kind, setKind] = useState<"TIME" | "LONG_RUN" | "VOLUME" | "STREAK">("TIME");
   const [distance, setDistance] = useState(10000);
   const [time, setTime] = useState("");
@@ -115,20 +146,25 @@ function CreateForm({ onDone }: { onDone: () => void }) {
     d.setSeconds(0, 0);
     return d.toISOString().slice(0, 16);
   });
-  const [stake, setStake] = useState(50);
+  const [stake, setStake] = useState(Math.min(50, elig.maxOwnerStake));
   const [err, setErr] = useState<string | null>(null);
+
+  const requiresStrava = kind === "VOLUME" || kind === "STREAK";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (stake > elig.maxOwnerStake) {
+      setErr(`Mise plafonnée à ${elig.maxOwnerStake} 🪙 (confiance ${(elig.confidence * 100).toFixed(0)} %).`);
+      return;
+    }
     const body: Record<string, unknown> = {
       kind, deadline: new Date(deadline).toISOString(), ownerStake: stake,
     };
     if (kind === "TIME") {
       const sec = parseTimeToSec(time);
       if (!sec) { setErr("Chrono invalide."); return; }
-      body.targetDistanceM = distance;
-      body.targetTimeSec = sec;
+      body.targetDistanceM = distance; body.targetTimeSec = sec;
     }
     if (kind === "LONG_RUN") body.targetDistanceM = distance;
     if (kind === "VOLUME") { body.targetTotalKm = totalKm; body.targetDays = days; }
@@ -145,14 +181,21 @@ function CreateForm({ onDone }: { onDone: () => void }) {
 
   return (
     <form onSubmit={submit} className="card space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="chip text-emerald-300">🛡️ Confiance {(elig.confidence * 100).toFixed(0)} %</span>
+        <span className="chip">PR le plus récent : {elig.prAgeDays} jour(s)</span>
+        <span className="chip">Plafond mise : {elig.maxOwnerStake} 🪙</span>
+        {!elig.hasStrava && <span className="chip text-amber-300">Strava non connecté</span>}
+      </div>
+
       <div className="grid md:grid-cols-2 gap-3">
         <div>
           <label className="label">Type de défi</label>
           <select className="input" value={kind} onChange={(e) => setKind(e.target.value as "TIME" | "LONG_RUN" | "VOLUME" | "STREAK")}>
             <option value="TIME">Chrono cible (D km sous T)</option>
             <option value="LONG_RUN">Sortie longue (1 run ≥ D km)</option>
-            <option value="VOLUME">Volume (X km en N jours)</option>
-            <option value="STREAK">Streak (courir N jours d'affilée)</option>
+            <option value="VOLUME">Volume (X km en N jours) — Strava requis</option>
+            <option value="STREAK">Streak (N jours d'affilée) — Strava requis</option>
           </select>
         </div>
         <div>
@@ -160,6 +203,12 @@ function CreateForm({ onDone }: { onDone: () => void }) {
           <input className="input" type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
         </div>
       </div>
+
+      {requiresStrava && !elig.hasStrava && (
+        <div className="text-sm text-amber-300">
+          Les défis {kind} exigent Strava pour un arbitrage fiable. Connecte ton compte avant.
+        </div>
+      )}
 
       {kind === "TIME" && (
         <div className="grid grid-cols-2 gap-3">
@@ -177,10 +226,9 @@ function CreateForm({ onDone }: { onDone: () => void }) {
       )}
       {kind === "LONG_RUN" && (
         <div>
-          <label className="label">Distance minimum de la sortie</label>
+          <label className="label">Distance minimum (mètres)</label>
           <input className="input" type="number" min={3000} step={500} value={distance}
             onChange={(e) => setDistance(Number(e.target.value))} />
-          <p className="text-xs text-white/50 mt-1">Saisis en mètres (ex : 25000 pour 25 km).</p>
         </div>
       )}
       {kind === "VOLUME" && (
@@ -203,17 +251,18 @@ function CreateForm({ onDone }: { onDone: () => void }) {
       )}
 
       <div>
-        <label className="label">Ta mise (tu paries automatiquement YES à la cote calculée)</label>
-        <input className="input" type="number" min={10} value={stake} onChange={(e) => setStake(Number(e.target.value))} />
-        <p className="text-xs text-white/50 mt-1">Formats supportés du chrono : 50:00, 1:25:13.</p>
+        <label className="label">Ta mise (max {elig.maxOwnerStake} 🪙)</label>
+        <input className="input" type="number" min={10} max={elig.maxOwnerStake}
+          value={stake} onChange={(e) => setStake(Number(e.target.value))} />
+        <p className="text-xs text-white/50 mt-1">
+          Le moteur refusera les cibles trop faciles (p &gt; 85 %) ou quasi impossibles (p &lt; 10 %).
+        </p>
       </div>
 
       {err && <p className="text-red-400 text-sm">{err}</p>}
-      <button className="btn-primary w-full" type="submit">Créer le défi</button>
-      <p className="text-xs text-white/40">
-        La cote YES est calculée à partir de ton VDOT et de la difficulté de la cible.
-        Suggestion : ne crée pas un défi trop facile ou personne ne pariera contre.
-      </p>
+      <button className="btn-primary w-full" type="submit" disabled={requiresStrava && !elig.hasStrava}>
+        Créer le défi
+      </button>
     </form>
   );
 }

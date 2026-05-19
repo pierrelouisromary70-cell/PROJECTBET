@@ -46,6 +46,24 @@ Application de paris virtuels entre coureurs à pied. Les cotes sont calculées
   preuve manuelle (URL résultat / capture). Délai 12 h à 14 jours.
   Expiration automatique = NO. Limite 3 défis ouverts par coureur.
 
+## Anti-sandbagging & calibration des défis
+
+Le risque évident d'un défi auto-arbitré : créer une cible trivialement à
+sa portée ou exploiter un PR ancien (sandbagging). Mesures combinées :
+
+| Faille | Défense |
+|---|---|
+| Nouveau user (VDOT default 30) | Création bloquée tant qu'aucun PR vérifié n'est enregistré. |
+| Cible trivialement facile (p>85 %) | Refus à la création (« Vise plus ambitieux »). |
+| Cible quasi impossible (p<10 %) | Refus à la création (« Vise plus réaliste »). |
+| PR ancien / pas de Strava | Score de **confiance** ∈ [0..1] qui rétrécit la proba vers 50 % → les cotes s'écrasent. Ex : un sandbagger qui devrait offrir 8.00 sur YES voit sa cote tassée à 2.38. |
+| Mise du sandbagger | Plafond proportionnel à la confiance (max 2 000 🪙 × confiance). Stake parieur plafonné de la même façon. |
+| Volume / Streak sans Strava | Refusés (impossible à arbitrer fiablement sans données d'activité). |
+| Grinding | Cooldown 4 h après chaque règlement, max 3 défis ouverts. |
+| Sandbagging persistant | Un défi TIME réussi avec preuve Strava crée automatiquement un PR vérifié → le VDOT remonte → les défis suivants se calibrent sur le vrai niveau. |
+| 3 succès consécutifs sur p<0.30 | Trust score automatiquement décrémenté (-10) → confiance future réduite. |
+| Cote figée au pari | Aucune manipulation rétroactive possible. |
+
 ## Stack
 
 - Next.js 14 (App Router) + TypeScript

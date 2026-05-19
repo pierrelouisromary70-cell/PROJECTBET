@@ -301,9 +301,17 @@ model Challenge {
   targetDays      Int?
 
   // Probabilité estimée et cote initiale (à la création).
+  // probSuccess = probabilité APRÈS application de la confiance (utilisée pour les cotes).
+  // probRaw     = probabilité brute du modèle (avant shrinkage).
+  // confidence  = score de confiance dans les données du créateur (0..1).
   probSuccess Float
+  probRaw     Float    @default(0.5)
+  confidence  Float    @default(0.5)
   oddsYesX100 Int
   oddsNoX100  Int
+
+  // Plafond de mise par parieur (dépend de la confiance).
+  maxBetStake Int      @default(5000)
 
   // Mise du créateur — il parie automatiquement YES.
   ownerStake  Int

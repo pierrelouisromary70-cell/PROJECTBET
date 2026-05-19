@@ -92,6 +92,188 @@ export function challengeOdds(p: number) {
   };
 }
 
+// ============== CONFIANCE & ÉLIGIBILITÉ ==============
+//
+// Le moteur ne peut produire des cotes équitables que si on a une idée
+// fiable du niveau du coureur. Le score de confiance combine :
+//   - fraîcheur du PR le plus récent (décroissance exponentielle 1 an)
+//   - présence d'un PR sur la distance pertinente du défi
+//   - score de confiance utilisateur (trust score 0..100)
+//   - connexion Strava (transparence forte des entraînements)
+// Une confiance faible RÉTRÉCIT la probabilité vers 0.5, donc tasse les
+// cotes : on empêche d'offrir 6.0 sur YES à quelqu'un dont on ignore tout.
+
+export function challengeConfidence(args: {
+  trustScore: number;
+  hasStrava: boolean;
+  prVerifiedCount: number;
+  latestPRAgeDays: number | null;
+  hasPRonDistance: boolean;
+}): number {
+  if (args.prVerifiedCount === 0) return 0;
+
+  const trust = Math.min(1, Math.max(0, args.trustScore / 100));
+  const freshness =
+    args.latestPRAgeDays == null ? 0 : Math.exp(-args.latestPRAgeDays / 365);
+
+  // Multiplicateurs : Strava +15 %, PR distance pertinente +10 %.
+  const stravaMul = args.hasStrava ? 1.15 : 1.0;
+  const distanceMul = args.hasPRonDistance ? 1.10 : 1.0;
+
+  return Math.min(1, 0.2 + 0.8 * trust * freshness * stravaMul * distanceMul);
+}
+
+// Rétrécit p_raw vers 0.5 proportionnellement à (1 - confidence).
+// confidence = 1.0 → pas de rétrécissement, on garde p_raw.
+// confidence = 0.3 → on perd 70 % de l'écart à 0.5.
+export function applyConfidence(pRaw: number, conf: number): number {
+  return 0.5 + (pRaw - 0.5) * conf;
+}
+
+// Distances "proches" : on considère qu'avoir un PR sur 10 km informe
+// pour une cible 8-12 km, etc. Tolérance 25 %.
+function isCloseDistance(have: number, target: number) {
+  return Math.abs(have - target) / target < 0.25;
+}
+
+export type ChallengeOwnerCheck =
+  | {
+      eligible: false;
+      reason: string;
+      confidence: number;
+      maxOwnerStake: 0;
+      maxBetStake: 0;
+    }
+  | {
+      eligible: true;
+      confidence: number;
+      maxOwnerStake: number;
+      maxBetStake: number;
+      probRaw: number;
+      probShrunk: number;
+    };
+
+const MIN_ACCOUNT_AGE_DAYS = 3;
+const MIN_CONFIDENCE_TO_CREATE = 0.20;
+const OWNER_COOLDOWN_HOURS = 4;
+const PROB_MIN = 0.10;
+const PROB_MAX = 0.85;
+const MAX_OWNER_STAKE_BASE = 2000;
+const MAX_BET_STAKE_BASE = 5000;
+const MIN_BET_STAKE = 100;
+
+export function checkOwnerEligibility(args: {
+  createdAt: Date;
+  trustScore: number;
+  hasStrava: boolean;
+  prs: Array<{ status: string; distanceM: number; raceDate: Date }>;
+  recentlySettledChallenges: Array<{ resolvedAt: Date | null }>;
+  vdot: number;
+  kind: ChallengeKind;
+  targetDistanceM?: number | null;
+  targetTimeSec?: number | null;
+  targetTotalKm?: number | null;
+  targetDays?: number | null;
+}): ChallengeOwnerCheck {
+  const denied = (reason: string, confidence = 0): ChallengeOwnerCheck => ({
+    eligible: false,
+    reason,
+    confidence,
+    maxOwnerStake: 0,
+    maxBetStake: 0,
+  });
+
+  const ageDays = (Date.now() - args.createdAt.getTime()) / 86400000;
+  if (ageDays < MIN_ACCOUNT_AGE_DAYS) {
+    return denied(
+      `Compte trop récent (< ${MIN_ACCOUNT_AGE_DAYS} jours). Reviens plus tard.`,
+    );
+  }
+
+  const verifiedPRs = args.prs.filter((p) => p.status === "VERIFIED");
+  if (verifiedPRs.length === 0) {
+    return denied(
+      "Aucun chrono certifié. Connecte Strava ou ajoute un résultat officiel avant de créer un défi.",
+    );
+  }
+
+  const latestPR = verifiedPRs
+    .slice()
+    .sort((a, b) => b.raceDate.getTime() - a.raceDate.getTime())[0];
+  const prAgeDays =
+    (Date.now() - latestPR.raceDate.getTime()) / 86400000;
+  const hasPRonDistance =
+    !!args.targetDistanceM &&
+    verifiedPRs.some((p) => isCloseDistance(p.distanceM, args.targetDistanceM!));
+
+  const confidence = challengeConfidence({
+    trustScore: args.trustScore,
+    hasStrava: args.hasStrava,
+    prVerifiedCount: verifiedPRs.length,
+    latestPRAgeDays: prAgeDays,
+    hasPRonDistance,
+  });
+
+  if (confidence < MIN_CONFIDENCE_TO_CREATE) {
+    return denied(
+      "Tes données sont trop anciennes ou peu fiables. Connecte Strava ou ajoute un chrono récent pour activer les défis.",
+      confidence,
+    );
+  }
+
+  // Cooldown
+  const last = args.recentlySettledChallenges
+    .filter((c) => c.resolvedAt)
+    .sort((a, b) => b.resolvedAt!.getTime() - a.resolvedAt!.getTime())[0];
+  if (last && Date.now() - last.resolvedAt!.getTime() < OWNER_COOLDOWN_HOURS * 3600 * 1000) {
+    const remaining = Math.ceil(
+      (OWNER_COOLDOWN_HOURS * 3600 * 1000 -
+        (Date.now() - last.resolvedAt!.getTime())) /
+        60000,
+    );
+    return denied(
+      `Cooldown : attends encore ${remaining} min avant de créer un nouveau défi.`,
+      confidence,
+    );
+  }
+
+  // Probabilité brute
+  const probRaw = probabilityOfSuccess({
+    kind: args.kind,
+    vdot: args.vdot,
+    targetDistanceM: args.targetDistanceM,
+    targetTimeSec: args.targetTimeSec,
+    targetTotalKm: args.targetTotalKm,
+    targetDays: args.targetDays,
+  });
+
+  if (probRaw > PROB_MAX) {
+    return denied(
+      "Cette cible est trivialement à ta portée selon le moteur. Vise plus ambitieux.",
+      confidence,
+    );
+  }
+  if (probRaw < PROB_MIN) {
+    return denied(
+      "Cette cible est quasiment impossible selon le moteur. Vise plus réaliste.",
+      confidence,
+    );
+  }
+
+  const probShrunk = applyConfidence(probRaw, confidence);
+  const maxOwnerStake = Math.max(50, Math.floor(MAX_OWNER_STAKE_BASE * confidence));
+  const maxBetStake = Math.max(MIN_BET_STAKE, Math.floor(MAX_BET_STAKE_BASE * confidence));
+
+  return {
+    eligible: true,
+    confidence,
+    maxOwnerStake,
+    maxBetStake,
+    probRaw,
+    probShrunk,
+  };
+}
+
 export function describeChallenge(args: {
   kind: ChallengeKind;
   targetDistanceM?: number | null;

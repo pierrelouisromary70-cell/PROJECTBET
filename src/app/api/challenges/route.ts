@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 import {
   ChallengeKind,
   challengeOdds,
+  checkOwnerEligibility,
   describeChallenge,
-  probabilityOfSuccess,
 } from "@/lib/challenge-engine";
 
 const MAX_OPEN_PER_USER = 3;
@@ -26,21 +26,17 @@ const Body = z.object({
 
 export async function GET(req: NextRequest) {
   const scope = req.nextUrl.searchParams.get("scope") ?? "open";
+  const session = await getServerSession(authOptions);
+
   const where =
-    scope === "mine"
-      ? {}
+    scope === "mine" && session?.user?.id
+      ? { ownerId: session.user.id }
       : scope === "all"
       ? {}
       : { status: "OPEN" as const };
 
-  const session = await getServerSession(authOptions);
-  const filter =
-    scope === "mine" && session?.user?.id
-      ? { ...where, ownerId: session.user.id }
-      : where;
-
   const items = await prisma.challenge.findMany({
-    where: filter,
+    where,
     orderBy: { deadline: "asc" },
     take: 100,
     include: {
@@ -50,7 +46,6 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  // Pools pour chaque side
   const enriched = items.map((c) => {
     const yesPool = c.bets.filter((b) => b.side === "YES").reduce((a, b) => a + b.stake, 0);
     const noPool = c.bets.filter((b) => b.side === "NO").reduce((a, b) => a + b.stake, 0);
@@ -70,7 +65,6 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const data = parsed.data;
 
-  // Validation des champs requis par kind
   if (data.kind === "TIME" && (!data.targetDistanceM || !data.targetTimeSec))
     return NextResponse.json({ error: "TIME : distance + chrono requis." }, { status: 400 });
   if (data.kind === "LONG_RUN" && !data.targetDistanceM)
@@ -81,44 +75,73 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "STREAK : jours requis." }, { status: 400 });
 
   const deadline = new Date(data.deadline);
-  const now = new Date();
-  const hoursAhead = (deadline.getTime() - now.getTime()) / 3600000;
-  if (hoursAhead < MIN_HOURS) {
+  const hoursAhead = (deadline.getTime() - Date.now()) / 3600000;
+  if (hoursAhead < MIN_HOURS)
     return NextResponse.json({ error: `Délai minimum : ${MIN_HOURS} h.` }, { status: 400 });
-  }
-  if (hoursAhead > MAX_DAYS * 24) {
+  if (hoursAhead > MAX_DAYS * 24)
     return NextResponse.json({ error: `Délai maximum : ${MAX_DAYS} jours.` }, { status: 400 });
-  }
 
   const openCount = await prisma.challenge.count({
     where: { ownerId: session.user.id, status: "OPEN" },
   });
   if (openCount >= MAX_OPEN_PER_USER) {
     return NextResponse.json(
-      { error: `Tu as déjà ${MAX_OPEN_PER_USER} défis ouverts. Clôture-les d'abord.` },
+      { error: `Tu as déjà ${MAX_OPEN_PER_USER} défis ouverts.` },
       { status: 429 },
     );
   }
 
+  // Volume/Streak sans Strava : on refuse — impossible à arbitrer fiablement
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
-    include: { profile: true },
+    include: {
+      profile: true,
+      prs: true,
+      challenges: {
+        where: { status: { not: "OPEN" } },
+        select: { resolvedAt: true },
+        orderBy: { resolvedAt: "desc" },
+        take: 5,
+      },
+    },
   });
   if (!me) return NextResponse.json({ error: "no user" }, { status: 404 });
-  if (me.tokens < data.ownerStake)
-    return NextResponse.json({ error: "Solde insuffisant pour la mise." }, { status: 400 });
 
-  const vdot = me.profile?.vdot ?? 30;
-  const p = probabilityOfSuccess({
+  if ((data.kind === "VOLUME" || data.kind === "STREAK") && !me.stravaId) {
+    return NextResponse.json(
+      { error: `Les défis ${data.kind} exigent Strava (auto-arbitrage). Connecte ton compte.` },
+      { status: 400 },
+    );
+  }
+
+  const check = checkOwnerEligibility({
+    createdAt: me.createdAt,
+    trustScore: me.trustScore,
+    hasStrava: !!me.stravaId,
+    prs: me.prs.map((p) => ({ status: p.status, distanceM: p.distanceM, raceDate: p.raceDate })),
+    recentlySettledChallenges: me.challenges,
+    vdot: me.profile?.vdot ?? 30,
     kind: data.kind as ChallengeKind,
-    vdot,
     targetDistanceM: data.targetDistanceM,
     targetTimeSec: data.targetTimeSec,
     targetTotalKm: data.targetTotalKm,
     targetDays: data.targetDays,
   });
-  const { pYes, oddsYes, oddsNo } = challengeOdds(p);
 
+  if (!check.eligible) {
+    return NextResponse.json({ error: check.reason }, { status: 400 });
+  }
+
+  if (data.ownerStake > check.maxOwnerStake) {
+    return NextResponse.json(
+      { error: `Mise plafonnée à ${check.maxOwnerStake} 🪙 (confiance ${(check.confidence * 100).toFixed(0)} %). Connecte Strava ou rafraîchis un PR pour relever ce plafond.` },
+      { status: 400 },
+    );
+  }
+  if (me.tokens < data.ownerStake)
+    return NextResponse.json({ error: "Solde insuffisant." }, { status: 400 });
+
+  const { oddsYes, oddsNo, pYes } = challengeOdds(check.probShrunk);
   const description = describeChallenge({
     kind: data.kind as ChallengeKind,
     targetDistanceM: data.targetDistanceM,
@@ -128,7 +151,6 @@ export async function POST(req: NextRequest) {
   });
 
   const challenge = await prisma.$transaction(async (tx) => {
-    // Débite la mise de l'owner et crée son pari YES automatique.
     await tx.user.update({
       where: { id: me.id },
       data: {
@@ -146,9 +168,12 @@ export async function POST(req: NextRequest) {
         targetTotalKm: data.targetTotalKm,
         targetDays: data.targetDays,
         deadline,
+        probRaw: check.probRaw,
         probSuccess: pYes,
+        confidence: check.confidence,
         oddsYesX100: Math.round(oddsYes * 100),
         oddsNoX100: Math.round(oddsNo * 100),
+        maxBetStake: check.maxBetStake,
         ownerStake: data.ownerStake,
       },
     });

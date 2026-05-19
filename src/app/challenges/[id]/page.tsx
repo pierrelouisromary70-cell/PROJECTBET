@@ -7,7 +7,8 @@ type Detail = {
   id: string; kind: string; description: string;
   ownerId: string; owner: { id: string; displayName: string; profile: { vdot: number } | null };
   startAt: string; deadline: string; status: string;
-  probSuccess: number; oddsYesX100: number; oddsNoX100: number;
+  probSuccess: number; probRaw: number; confidence: number;
+  oddsYesX100: number; oddsNoX100: number; maxBetStake: number;
   ownerStake: number; yesPool: number; noPool: number;
   evidenceUrl?: string | null;
   bets: Array<{
@@ -74,9 +75,17 @@ export default function ChallengeDetail() {
         <div className="flex flex-wrap gap-2 mt-2">
           <span className="chip">{c.status}</span>
           <span className="chip">Deadline {new Date(c.deadline).toLocaleString("fr-FR")}</span>
-          <span className="chip">Proba estimée {(c.probSuccess * 100).toFixed(0)} %</span>
-          <span className="chip">Mise du créateur : {c.ownerStake} 🪙</span>
+          <span className="chip">Proba ajustée {(c.probSuccess * 100).toFixed(0)} %</span>
+          <span className="chip text-white/50">brute {(c.probRaw * 100).toFixed(0)} %</span>
+          <span className={`chip ${c.confidence >= 0.7 ? "text-emerald-300" : c.confidence >= 0.4 ? "text-amber-300" : "text-red-300"}`}>
+            🛡️ Confiance {(c.confidence * 100).toFixed(0)} %
+          </span>
+          <span className="chip">Plafond/parieur {c.maxBetStake} 🪙</span>
         </div>
+        <p className="text-xs text-white/40 mt-2">
+          Quand la confiance est basse (PR ancien, pas de Strava), le moteur rapproche la
+          probabilité de 50 % et plafonne les mises — protection contre le sandbagging.
+        </p>
       </div>
 
       {msg && <div className="card text-sm">{msg}</div>}
@@ -102,8 +111,9 @@ export default function ChallengeDetail() {
 
       {canBet && (
         <div className="card flex items-center gap-3">
-          <span className="text-sm text-white/70">Mise :</span>
-          <input className="input flex-1" type="number" min={10} value={stake} onChange={(e) => setStake(Number(e.target.value))} />
+          <span className="text-sm text-white/70">Mise (max {c.maxBetStake} 🪙) :</span>
+          <input className="input flex-1" type="number" min={10} max={c.maxBetStake}
+            value={stake} onChange={(e) => setStake(Number(e.target.value))} />
         </div>
       )}
 
