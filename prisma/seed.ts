@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { CATALOG } from "../src/lib/shop-catalog";
 import { vdotFromPerf } from "../src/lib/vdot";
 import { generateReferralCode } from "../src/lib/referral";
+import { challengeOdds, describeChallenge, probabilityOfSuccess } from "../src/lib/challenge-engine";
 
 const prisma = new PrismaClient();
 
@@ -98,6 +99,42 @@ async function main() {
       },
     });
     console.log("  race:", race.id);
+  }
+
+  console.log("Seeding démo challenge…");
+  if (alex) {
+    const profile = await prisma.runnerProfile.findUnique({ where: { userId: alex.id } });
+    const vdot = profile?.vdot ?? 30;
+    const targetTimeSec = 50 * 60;
+    const p = probabilityOfSuccess({ kind: "TIME", vdot, targetDistanceM: 10000, targetTimeSec });
+    const { oddsYes, oddsNo, pYes } = challengeOdds(p);
+    const description = describeChallenge({ kind: "TIME", targetDistanceM: 10000, targetTimeSec });
+    const stake = 100;
+    const challenge = await prisma.challenge.create({
+      data: {
+        ownerId: alex.id,
+        kind: "TIME",
+        description,
+        targetDistanceM: 10000,
+        targetTimeSec,
+        deadline: new Date(Date.now() + 48 * 3600 * 1000),
+        probSuccess: pYes,
+        oddsYesX100: Math.round(oddsYes * 100),
+        oddsNoX100: Math.round(oddsNo * 100),
+        ownerStake: stake,
+      },
+    });
+    await prisma.challengeBet.create({
+      data: {
+        challengeId: challenge.id,
+        bettorId: alex.id,
+        side: "YES",
+        stake,
+        oddsX100: Math.round(oddsYes * 100),
+        isOwner: true,
+      },
+    });
+    console.log("  challenge:", challenge.id, "—", description, "@", oddsYes.toFixed(2), "/", oddsNo.toFixed(2));
   }
 
   console.log("Done.");

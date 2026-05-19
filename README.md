@@ -38,6 +38,13 @@ Application de paris virtuels entre coureurs à pied. Les cotes sont calculées
 - 🏅 **15 succès** : 1ᵉʳ pari, 1ᵉʳ chrono, BIG_WIN à cote ≥ 5, paliers VDOT
   50/60/70, CARBON_OWNER, FULL_OUTFIT, REFERRER_1/5/25, MARATHON_FINISHER…
 - 📊 **Classements** : tokens, VDOT, taux de paris gagnés.
+- ⚡ **Défis quotidiens** : pour combler les semaines sans course officielle,
+  chaque coureur peut lancer un défi sur lui-même (4 types : Chrono cible,
+  Sortie longue, Volume sur N jours, Streak). Cotes auto-calculées à partir
+  du VDOT et de la difficulté de la cible. Les autres parient YES (réussit)
+  ou NO (échoue). Résolution par Strava (auto via `/check-strava`) ou
+  preuve manuelle (URL résultat / capture). Délai 12 h à 14 jours.
+  Expiration automatique = NO. Limite 3 défis ouverts par coureur.
 
 ## Stack
 

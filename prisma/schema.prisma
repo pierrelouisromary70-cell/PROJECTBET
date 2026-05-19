@@ -56,6 +56,9 @@ model User {
 
   racesCreated  Race[]             @relation("RaceCreator")
   raceEntriesA  RaceEntry[]        @relation("RaceEntryRunner")
+
+  challenges    Challenge[]        @relation("ChallengeOwner")
+  challengeBets ChallengeBet[]
 }
 
 model RunnerProfile {
@@ -277,4 +280,63 @@ model TokenPurchase {
   completedAt  DateTime?
 
   @@index([userId, status])
+}
+
+// ============== DÉFIS QUOTIDIENS ==============
+// Un coureur crée un défi sur lui-même, les autres parient YES/NO sur sa
+// réussite. Résolution par Strava ou preuve manuelle, expiration auto.
+
+model Challenge {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation("ChallengeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  kind        String   // TIME | LONG_RUN | VOLUME | STREAK
+  description String   // texte généré, ex "10 km sub 50:00"
+
+  // Paramètres (selon kind) ; un champ peut être null si non utilisé.
+  targetDistanceM Int?
+  targetTimeSec   Int?
+  targetTotalKm   Float?
+  targetDays      Int?
+
+  // Probabilité estimée et cote initiale (à la création).
+  probSuccess Float
+  oddsYesX100 Int
+  oddsNoX100  Int
+
+  // Mise du créateur — il parie automatiquement YES.
+  ownerStake  Int
+
+  // Délai
+  startAt     DateTime @default(now())
+  deadline    DateTime
+  resolvedAt  DateTime?
+  status      String   @default("OPEN") // OPEN | RESOLVED_YES | RESOLVED_NO | EXPIRED | VOID
+  evidenceUrl String?
+
+  bets        ChallengeBet[]
+  createdAt   DateTime @default(now())
+
+  @@index([status, deadline])
+}
+
+model ChallengeBet {
+  id          String   @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  bettorId    String
+  bettor      User     @relation(fields: [bettorId], references: [id], onDelete: Cascade)
+
+  side        String   // YES | NO
+  stake       Int
+  oddsX100    Int      // figée à la prise
+  isOwner     Boolean  @default(false)
+
+  status      String   @default("OPEN") // OPEN | WON | LOST | VOID
+  payout      Int      @default(0)
+  settledAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([challengeId, status])
 }

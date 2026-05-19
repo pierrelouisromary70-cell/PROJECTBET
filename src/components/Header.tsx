@@ -19,6 +19,7 @@ export default function Header() {
           🏃 RunnerBet
         </Link>
         <nav className="flex items-center gap-4 text-sm text-white/80">
+          <Link href="/challenges" className="hover:text-white">Défis</Link>
           <Link href="/races" className="hover:text-white">Courses</Link>
           <Link href="/bets" className="hover:text-white">Mes paris</Link>
           <Link href="/shop" className="hover:text-white">Boutique</Link>

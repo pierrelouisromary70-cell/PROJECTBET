@@ -18,9 +18,11 @@ export default function Landing() {
 
       <section className="grid md:grid-cols-3 gap-4">
         <div className="card">
-          <h3 className="font-bold">⏱️ VDOT Jack Daniels</h3>
+          <h3 className="font-bold">⚡ Défis quotidiens</h3>
           <p className="text-white/70 text-sm mt-2">
-            Donne ton chrono sur n'importe quelle distance, on prédit toutes les autres et on calcule la cote.
+            Pas besoin d'attendre une course officielle : chaque coureur peut
+            lancer un défi sur lui-même (chrono, volume, streak) et les autres
+            parient pour ou contre.
           </p>
         </div>
         <div className="card">
