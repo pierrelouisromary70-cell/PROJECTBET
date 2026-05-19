@@ -4,13 +4,14 @@
 
 export type CatalogItem = {
   id: string;
-  category: "shoes" | "shirt" | "shorts" | "socks" | "cap" | "glasses";
+  category: "shoes" | "shirt" | "shorts" | "socks" | "cap" | "glasses" | "watch" | "belt";
   brand: string;
   model: string;
-  tier: "entry" | "mid" | "premium" | "carbon";
+  tier: "entry" | "mid" | "premium" | "carbon" | "limited";
   priceTokens: number;
   imageEmoji: string;
   description: string;
+  availableUntil?: string; // ISO date — null/undefined si permanent
 };
 
 // Conversion volontairement non-linéaire :
@@ -75,6 +76,35 @@ export const CATALOG: CatalogItem[] = [
   { id: "glasses_basic", category: "glasses", brand: "Generic", model: "Lunettes basiques", tier: "entry", priceTokens: 200, imageEmoji: "🕶️", description: "Anti-UV simple." },
   { id: "glasses_oakley_radar_ev", category: "glasses", brand: "Oakley", model: "Radar EV Path", tier: "premium", priceTokens: 2200, imageEmoji: "🕶️", description: "Prizm, la référence sport." },
   { id: "glasses_district_vision_keiichi", category: "glasses", brand: "District Vision", model: "Keiichi", tier: "premium", priceTokens: 3500, imageEmoji: "🕶️", description: "Lunettes de méditation cinétique." },
+
+  // ---------- MONTRES GPS (catalogue 2026) ----------
+  { id: "watch_coros_pace_3", category: "watch", brand: "Coros", model: "Pace 3", tier: "entry", priceTokens: 1800, imageEmoji: "⌚", description: "GPS double fréquence, autonomie record, le rapport qualité-prix." },
+  { id: "watch_garmin_fr_165", category: "watch", brand: "Garmin", model: "Forerunner 165", tier: "entry", priceTokens: 2200, imageEmoji: "⌚", description: "AMOLED, GPS, entrée de gamme Garmin." },
+  { id: "watch_garmin_fr_265", category: "watch", brand: "Garmin", model: "Forerunner 265", tier: "mid", priceTokens: 4200, imageEmoji: "⌚", description: "AMOLED, GPS multi-bande, plans d'entraînement." },
+  { id: "watch_polar_pacer_pro", category: "watch", brand: "Polar", model: "Pacer Pro", tier: "mid", priceTokens: 3500, imageEmoji: "⌚", description: "Léger, FC précise, profil endurance complet." },
+  { id: "watch_garmin_fr_965", category: "watch", brand: "Garmin", model: "Forerunner 965", tier: "premium", priceTokens: 6500, imageEmoji: "⌚", description: "AMOLED, cartographie, le bijou du marathonien." },
+  { id: "watch_coros_apex_2_pro", category: "watch", brand: "Coros", model: "Apex 2 Pro", tier: "premium", priceTokens: 5800, imageEmoji: "⌚", description: "Titane, cartographie hors-ligne, autonomie monstre." },
+  { id: "watch_apple_ultra_3", category: "watch", brand: "Apple", model: "Watch Ultra 3", tier: "premium", priceTokens: 9000, imageEmoji: "⌚", description: "Pour les puristes Apple qui veulent du sport." },
+  { id: "watch_garmin_fenix_8", category: "watch", brand: "Garmin", model: "Fenix 8", tier: "premium", priceTokens: 10500, imageEmoji: "⌚", description: "Le couteau-suisse multi-sport haut de gamme." },
+  { id: "watch_garmin_enduro_3", category: "watch", brand: "Garmin", model: "Enduro 3", tier: "carbon", priceTokens: 13000, imageEmoji: "💎", description: "Solaire, ultra-trail, autonomie semaine sans recharge." },
+
+  // ---------- CEINTURES / HYDRATATION ----------
+  { id: "belt_naked_band", category: "belt", brand: "Naked", model: "Running Band", tier: "mid", priceTokens: 700, imageEmoji: "🎽", description: "Ceinture invisible, tient gels et téléphone." },
+  { id: "belt_flipbelt_zipper", category: "belt", brand: "FlipBelt", model: "Zipper", tier: "entry", priceTokens: 350, imageEmoji: "🎒", description: "L'icône des ceintures rando-run." },
+  { id: "belt_salomon_active_skin_5", category: "belt", brand: "Salomon", model: "Active Skin 5", tier: "premium", priceTokens: 2200, imageEmoji: "🎒", description: "Sac de trail léger, 2 flasks 250 ml fournies." },
+  { id: "belt_uswe_pace_8", category: "belt", brand: "USWE", model: "Pace 8", tier: "premium", priceTokens: 2800, imageEmoji: "🎒", description: "Sac no-bounce, parfait pour longs trails." },
+  { id: "belt_maurten_320", category: "belt", brand: "Maurten", model: "Gel 320", tier: "entry", priceTokens: 200, imageEmoji: "🍯", description: "320 kcal, le gel des élites marathon." },
+  { id: "belt_ta_endurance", category: "belt", brand: "TA Endurance", model: "Cocktail Caféiné", tier: "entry", priceTokens: 180, imageEmoji: "🥤", description: "Le bidon recharge maison." },
+
+  // ---------- ÉDITIONS LIMITÉES (DROPS) ----------
+  // Pour pousser le FOMO : durée 30 jours à partir d'aujourd'hui.
+  { id: "shoes_alphafly_3_tokyo", category: "shoes", brand: "Nike", model: "Alphafly 3 « Tokyo Edition »", tier: "limited", priceTokens: 22000, imageEmoji: "🌸", description: "Coloris Tokyo Marathon, drop limité.", availableUntil: __limitedExpiry() },
+  { id: "shoes_metaspeed_paris_gold", category: "shoes", brand: "Asics", model: "Metaspeed Sky Paris « Gold Edition »", tier: "limited", priceTokens: 24000, imageEmoji: "🏅", description: "Édition or des JO de Paris, série numérotée.", availableUntil: __limitedExpiry() },
+  { id: "watch_garmin_fenix_8_signature", category: "watch", brand: "Garmin", model: "Fenix 8 Signature", tier: "limited", priceTokens: 18000, imageEmoji: "🌟", description: "Édition signature en titane brossé. Stock limité.", availableUntil: __limitedExpiry() },
 ];
+
+function __limitedExpiry(daysFromNow = 30): string {
+  return new Date(Date.now() + daysFromNow * 86400000).toISOString();
+}
 
 export const findItem = (id: string) => CATALOG.find((c) => c.id === id);

@@ -2,11 +2,29 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
-type ShopItem = { id: string; category: string; brand: string; model: string; tier: string; priceTokens: number; imageEmoji: string; description: string };
+type ShopItem = {
+  id: string; category: string; brand: string; model: string; tier: string;
+  priceTokens: number; imageEmoji: string; description: string;
+  availableUntil?: string | null;
+};
 
 const CAT_LABELS: Record<string, string> = {
-  shoes: "Chaussures", shirt: "Hauts", shorts: "Shorts", socks: "Chaussettes", cap: "Casquettes", glasses: "Lunettes",
+  shoes: "Chaussures", shirt: "Hauts", shorts: "Shorts", socks: "Chaussettes",
+  cap: "Casquettes", glasses: "Lunettes", watch: "Montres", belt: "Hydratation",
 };
+
+function Countdown({ until }: { until: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const diff = new Date(until).getTime() - now;
+  if (diff <= 0) return <span className="text-red-300 text-xs">Expiré</span>;
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  return <span className="text-amber-300 text-xs">⏳ {days}j {hours}h</span>;
+}
 
 export default function ShopPage() {
   const { status } = useSession();
@@ -26,7 +44,10 @@ export default function ShopPage() {
   useEffect(() => { load(); }, [status]);
 
   async function buy(id: string) {
-    const r = await fetch("/api/shop/buy", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: id }) });
+    const r = await fetch("/api/shop/buy", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ itemId: id }),
+    });
     const j = await r.json();
     if (!r.ok) setMsg(j.error ?? "Erreur");
     else setMsg("Achat effectué !");
@@ -34,7 +55,10 @@ export default function ShopPage() {
   }
 
   const owned = new Set(me?.inventory.map((i) => i.itemId) ?? []);
-  const filtered = filter === "all" ? items : items.filter((i) => i.category === filter);
+  const filtered =
+    filter === "all" ? items
+    : filter === "drops" ? items.filter((i) => i.availableUntil)
+    : items.filter((i) => i.category === filter);
 
   return (
     <div className="space-y-4">
@@ -45,6 +69,9 @@ export default function ShopPage() {
 
       <div className="flex flex-wrap gap-2">
         <button className={`chip ${filter === "all" ? "border-accent" : ""}`} onClick={() => setFilter("all")}>Tout</button>
+        <button className={`chip ${filter === "drops" ? "border-amber-300" : ""}`} onClick={() => setFilter("drops")}>
+          🔥 Drops limités
+        </button>
         {Object.entries(CAT_LABELS).map(([k, lbl]) => (
           <button key={k} className={`chip ${filter === k ? "border-accent" : ""}`} onClick={() => setFilter(k)}>{lbl}</button>
         ))}
@@ -57,10 +84,13 @@ export default function ShopPage() {
           const isOwned = owned.has(i.id);
           const tooExpensive = me && me.tokens < i.priceTokens;
           return (
-            <div key={i.id} className="card flex flex-col">
+            <div key={i.id} className={`card flex flex-col ${i.availableUntil ? "ring-1 ring-amber-300/30" : ""}`}>
               <div className="flex items-start justify-between">
                 <div className="text-4xl">{i.imageEmoji}</div>
-                <span className={`chip tier-${i.tier}`}>{i.tier}</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`chip tier-${i.tier}`}>{i.tier}</span>
+                  {i.availableUntil && <Countdown until={i.availableUntil} />}
+                </div>
               </div>
               <div className="mt-3">
                 <div className="text-xs text-white/60">{i.brand}</div>

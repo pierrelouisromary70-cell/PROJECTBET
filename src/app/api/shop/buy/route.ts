@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
 
   const item = await prisma.shopItem.findUnique({ where: { id: parsed.data.itemId } });
   if (!item) return NextResponse.json({ error: "item inconnu" }, { status: 404 });
+  if (item.availableUntil && item.availableUntil.getTime() < Date.now())
+    return NextResponse.json({ error: "Drop expiré." }, { status: 410 });
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return NextResponse.json({ error: "user" }, { status: 404 });

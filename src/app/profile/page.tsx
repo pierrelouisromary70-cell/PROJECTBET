@@ -5,15 +5,34 @@ import { useRouter } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import { STANDARD_DISTANCES, formatTime, parseTimeToSec, predictTimeSec } from "@/lib/vdot";
 import { ACH_BY_CODE, ACHIEVEMENTS } from "@/lib/achievements";
+import { SKIN_TONES } from "@/lib/avatar";
+import { TITLES_BY_ACHIEVEMENT, titleFor } from "@/lib/titles";
 
+type InventoryItem = { item: { id: string; brand: string; model: string; category: string; tier: string; imageEmoji: string } };
+type Loadout = {
+  id: string; name: string;
+  shoesId?: string | null; shirtId?: string | null; shortsId?: string | null; socksId?: string | null;
+  capId?: string | null; glassesId?: string | null; watchId?: string | null; beltId?: string | null;
+};
 type Me = {
   id: string; displayName: string; tokens: number; trustScore: number; stravaId?: string | null;
   referralCode: string; loginStreak: number; lastDailyBonusAt?: string | null;
-  profile: { vdot: number; equippedShoes?: string | null; equippedShirt?: string | null; equippedShorts?: string | null; equippedSocks?: string | null; equippedCap?: string | null; equippedGlasses?: string | null } | null;
+  profile: {
+    vdot: number; gender: string; skinTone: string; selectedTitle?: string | null;
+    equippedShoes?: string | null; equippedShirt?: string | null; equippedShorts?: string | null;
+    equippedSocks?: string | null; equippedCap?: string | null; equippedGlasses?: string | null;
+    equippedWatch?: string | null; equippedBelt?: string | null;
+    loadouts: Loadout[];
+  } | null;
   prs: Array<{ id: string; distanceM: number; timeSec: number; raceDate: string; source: string; status: string; evidenceUrl?: string | null }>;
-  inventory: Array<{ item: { id: string; brand: string; model: string; category: string; tier: string; imageEmoji: string } }>;
+  inventory: InventoryItem[];
   achievements: Array<{ code: string; unlockedAt: string }>;
   referrals: Array<{ id: string; displayName: string; createdAt: string }>;
+};
+
+const CAT_LABEL: Record<string, string> = {
+  shoes: "Chaussures", shirt: "Hauts", shorts: "Shorts", socks: "Chaussettes",
+  cap: "Casquettes", glasses: "Lunettes", watch: "Montres", belt: "Hydratation",
 };
 
 export default function ProfilePage() {
@@ -24,6 +43,7 @@ export default function ProfilePage() {
   const [adsRemaining, setAdsRemaining] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [newLoadoutName, setNewLoadoutName] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -86,10 +106,44 @@ export default function ProfilePage() {
 
   async function equip(itemId: string) {
     await fetch("/api/shop/equip", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ itemId }),
     });
+    await load();
+  }
+
+  async function changeAppearance(patch: { skinTone?: string; selectedTitle?: string | null }) {
+    const r = await fetch("/api/profile/appearance", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      setMsg(j.error ?? "Erreur.");
+    }
+    await load();
+  }
+
+  async function createLoadout() {
+    if (!newLoadoutName.trim()) return;
+    const r = await fetch("/api/loadouts", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newLoadoutName.trim() }),
+    });
+    const j = await r.json();
+    if (!r.ok) setMsg(j.error ?? "Erreur.");
+    setNewLoadoutName("");
+    await load();
+  }
+
+  async function equipLoadout(id: string) {
+    await fetch(`/api/loadouts/${id}/equip`, { method: "POST" });
+    setMsg("Tenue équipée.");
+    await load();
+  }
+
+  async function deleteLoadout(id: string) {
+    await fetch(`/api/loadouts/${id}`, { method: "DELETE" });
     await load();
   }
 
@@ -107,12 +161,19 @@ export default function ProfilePage() {
   const lastClaim = me.lastDailyBonusAt?.slice(0, 10);
   const canClaim = lastClaim !== today;
   const unlocked = new Set(me.achievements.map((a) => a.code));
+  const title = titleFor(me.profile?.selectedTitle);
+  const inventoryByCat = me.inventory.reduce<Record<string, InventoryItem[]>>((acc, i) => {
+    (acc[i.item.category] ??= []).push(i);
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-3 gap-4">
         <div className="card md:col-span-2">
-          <h1 className="text-2xl font-bold">{me.displayName}</h1>
+          <h1 className="text-2xl font-bold">{me.displayName}
+            {title && <span className="ml-2 text-amber-300 text-base font-semibold align-middle">· {title}</span>}
+          </h1>
           <div className="flex flex-wrap gap-2 mt-2">
             <span className="chip">VDOT {vdot.toFixed(1)}</span>
             <span className="chip">Confiance {me.trustScore}/100</span>
@@ -135,21 +196,15 @@ export default function ProfilePage() {
           <Avatar profile={me.profile} />
           <div className="card">
             <h3 className="font-bold">🔥 Bonus quotidien</h3>
-            <p className="text-sm text-white/70 mt-1">Série de {me.loginStreak} jour(s). Reviens chaque jour pour grossir le bonus.</p>
-            <button
-              className="btn-gold mt-3 w-full"
-              disabled={!canClaim}
-              onClick={claimDaily}>
+            <p className="text-sm text-white/70 mt-1">Série de {me.loginStreak} jour(s).</p>
+            <button className="btn-gold mt-3 w-full" disabled={!canClaim} onClick={claimDaily}>
               {canClaim ? "Réclamer mon bonus" : "Déjà réclamé"}
             </button>
           </div>
           <div className="card">
             <h3 className="font-bold">📺 Pubs du jour</h3>
             <p className="text-sm text-white/70 mt-1">10 jetons / vidéo (max 5/jour).</p>
-            <button
-              className="btn-gold mt-3 w-full"
-              disabled={!adsRemaining}
-              onClick={watchAd}>
+            <button className="btn-gold mt-3 w-full" disabled={!adsRemaining} onClick={watchAd}>
               {adsRemaining ? `Voir une pub (${adsRemaining} restantes)` : "Limite atteinte"}
             </button>
           </div>
@@ -158,11 +213,74 @@ export default function ProfilePage() {
 
       {msg && <div className="card text-sm">{msg}</div>}
 
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="card">
+          <h3 className="font-bold mb-3">🎨 Apparence de l'avatar</h3>
+          <div className="mb-3">
+            <label className="label">Carnation</label>
+            <div className="flex gap-2 flex-wrap">
+              {SKIN_TONES.map((t) => {
+                const active = me.profile?.skinTone === t.key;
+                return (
+                  <button key={t.key}
+                    onClick={() => changeAppearance({ skinTone: t.key })}
+                    className={`btn-ghost text-xl ${active ? "border-accent" : ""}`}
+                    title={t.label}>
+                    🏃{t.modifier}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="label">Titre affiché</label>
+            <select className="input"
+              value={me.profile?.selectedTitle ?? ""}
+              onChange={(e) => changeAppearance({ selectedTitle: e.target.value || null })}>
+              <option value="">— Aucun —</option>
+              {Object.entries(TITLES_BY_ACHIEVEMENT).map(([code, label]) => (
+                <option key={code} value={code} disabled={!unlocked.has(code)}>
+                  {label} {unlocked.has(code) ? "" : "(verrouillé)"}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-white/50 mt-1">
+              Débloque des succès pour gagner de nouveaux titres.
+            </p>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="font-bold mb-3">👗 Tenues sauvegardées ({me.profile?.loadouts.length ?? 0}/3)</h3>
+          <div className="space-y-2">
+            {me.profile?.loadouts.map((l) => (
+              <div key={l.id} className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2">
+                <span className="font-semibold">{l.name}</span>
+                <div className="flex gap-2">
+                  <button className="btn-ghost text-xs" onClick={() => equipLoadout(l.id)}>Équiper</button>
+                  <button className="btn-ghost text-xs" onClick={() => deleteLoadout(l.id)}>Suppr.</button>
+                </div>
+              </div>
+            ))}
+            {(me.profile?.loadouts.length ?? 0) < 3 && (
+              <div className="flex gap-2 pt-2">
+                <input className="input flex-1" placeholder="Nom (ex : Marathon Paris)"
+                  value={newLoadoutName} onChange={(e) => setNewLoadoutName(e.target.value)} />
+                <button className="btn-primary" onClick={createLoadout}>Capturer ma tenue</button>
+              </div>
+            )}
+            {(me.profile?.loadouts.length ?? 0) === 0 && (
+              <p className="text-white/50 text-sm">Capture ta tenue actuelle pour la rappeler en 1 clic plus tard.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <h3 className="font-bold">🤝 Parrainage</h3>
         <p className="text-sm text-white/70 mt-1">
-          Invite des amis : +100 jetons à l'inscription, +200 à leur 1<sup>er</sup> chrono vérifié,
-          +200 à leur 1<sup>er</sup> pari. Eux reçoivent 50 jetons.
+          +100 jetons à l'inscription, +200 au 1<sup>er</sup> chrono vérifié,
+          +200 au 1<sup>er</sup> pari. Filleul : 50 jetons en bienvenue.
         </p>
         <div className="flex items-center gap-2 mt-3">
           <code className="bg-black/30 px-3 py-2 rounded-xl border border-white/10 text-lg tracking-widest">
@@ -215,7 +333,7 @@ export default function ProfilePage() {
                 </select>
               </div>
               <div>
-                <label className="label">Chrono (mm:ss / h:mm:ss)</label>
+                <label className="label">Chrono</label>
                 <input className="input" placeholder="35:42" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
               </div>
             </div>
@@ -233,7 +351,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <label className="label">Preuve (URL résultat ou photo dossard)</label>
+              <label className="label">Preuve</label>
               <input className="input" placeholder="https://…" value={form.evidenceUrl} onChange={(e) => setForm({ ...form, evidenceUrl: e.target.value })} />
             </div>
             <button className="btn-primary w-full" type="submit">Soumettre</button>
@@ -244,14 +362,11 @@ export default function ProfilePage() {
           <h3 className="font-bold mb-3">Strava</h3>
           {me.stravaId ? (
             <>
-              <p className="text-sm text-white/70">Compte connecté. Importe tes activités Run pour générer des PRs vérifiés sur 5/10/21/42 km.</p>
+              <p className="text-sm text-white/70">Compte connecté.</p>
               <button className="btn-primary w-full mt-3" onClick={importStrava}>Importer mes activités</button>
             </>
           ) : (
-            <>
-              <p className="text-sm text-white/70">Connecte Strava — c'est la source la plus fiable pour tes chronos.</p>
-              <a className="btn-primary w-full mt-3" href="/api/strava/login">Connecter Strava</a>
-            </>
+            <a className="btn-primary w-full" href="/api/strava/login">Connecter Strava</a>
           )}
         </div>
       </div>
@@ -287,14 +402,22 @@ export default function ProfilePage() {
         {me.inventory.length === 0 ? (
           <p className="text-white/60 text-sm">Rien encore. Va faire un tour à la boutique.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {me.inventory.map((i) => (
-              <button key={i.item.id} onClick={() => equip(i.item.id)} className="text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5">
-                <div className="text-2xl">{i.item.imageEmoji}</div>
-                <div className="text-xs text-white/70">{i.item.brand}</div>
-                <div className="text-sm font-semibold">{i.item.model}</div>
-                <div className={`text-xs tier-${i.item.tier}`}>{i.item.tier}</div>
-              </button>
+          <div className="space-y-4">
+            {Object.entries(inventoryByCat).map(([cat, items]) => (
+              <div key={cat}>
+                <div className="text-xs text-white/60 uppercase tracking-wider mb-2">{CAT_LABEL[cat] ?? cat}</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {items.map((i) => (
+                    <button key={i.item.id} onClick={() => equip(i.item.id)}
+                      className="text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5">
+                      <div className="text-2xl">{i.item.imageEmoji}</div>
+                      <div className="text-xs text-white/70">{i.item.brand}</div>
+                      <div className="text-sm font-semibold">{i.item.model}</div>
+                      <div className={`text-xs tier-${i.item.tier}`}>{i.item.tier}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

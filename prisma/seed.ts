@@ -12,18 +12,20 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding catalog…");
   for (const item of CATALOG) {
+    const data = {
+      category: item.category,
+      brand: item.brand,
+      model: item.model,
+      tier: item.tier,
+      priceTokens: item.priceTokens,
+      imageEmoji: item.imageEmoji,
+      description: item.description,
+      availableUntil: item.availableUntil ? new Date(item.availableUntil) : null,
+    };
     await prisma.shopItem.upsert({
       where: { id: item.id },
-      update: {
-        category: item.category,
-        brand: item.brand,
-        model: item.model,
-        tier: item.tier,
-        priceTokens: item.priceTokens,
-        imageEmoji: item.imageEmoji,
-        description: item.description,
-      },
-      create: item,
+      update: data,
+      create: { id: item.id, ...data },
     });
   }
 

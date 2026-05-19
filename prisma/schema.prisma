@@ -69,14 +69,43 @@ model RunnerProfile {
   // VDOT courant (recalculé à chaque PR vérifié)
   vdot        Float    @default(30)
 
-  // Avatar
+  // Avatar — corps
   avatarSeed  String   @default("base")
+  skinTone    String   @default("medium") // light | lightMedium | medium | darkMedium | dark
+
+  // Avatar — équipement
   equippedShoes   String?
   equippedShirt   String?
   equippedShorts  String?
   equippedSocks   String?
   equippedCap     String?
   equippedGlasses String?
+  equippedWatch   String?
+  equippedBelt    String?
+
+  // Titre affiché à côté du pseudo (code d'achievement)
+  selectedTitle   String?
+
+  loadouts Loadout[]
+}
+
+model Loadout {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   RunnerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String
+  shoesId   String?
+  shirtId   String?
+  shortsId  String?
+  socksId   String?
+  capId     String?
+  glassesId String?
+  watchId   String?
+  beltId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([profileId, name])
 }
 
 // ============== CHRONOS CERTIFIÉS ==============
@@ -172,13 +201,16 @@ model Bet {
 
 model ShopItem {
   id          String   @id // slug stable
-  category    String   // shoes|shirt|shorts|socks|cap|glasses
+  category    String   // shoes|shirt|shorts|socks|cap|glasses|watch|belt
   brand       String
   model       String
-  tier        String   // entry|mid|premium|carbon
+  tier        String   // entry|mid|premium|carbon|limited
   priceTokens Int
   imageEmoji  String   // pour l'avatar simple
   description String
+
+  // Édition limitée : si renseigné, l'item disparaît de la boutique à cette date
+  availableUntil DateTime?
 
   inventory   InventoryItem[]
 }

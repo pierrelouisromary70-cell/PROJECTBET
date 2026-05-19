@@ -31,3 +31,4 @@ a { color: inherit; }
 .tier-mid     { @apply text-cyan-300; }
 .tier-premium { @apply text-violet-300; }
 .tier-carbon  { @apply text-amber-300; }
+.tier-limited { @apply text-pink-300; }

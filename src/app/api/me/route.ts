@@ -9,7 +9,7 @@ export async function GET() {
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
-      profile: true,
+      profile: { include: { loadouts: { orderBy: { createdAt: "asc" } } } },
       prs: { orderBy: { raceDate: "desc" } },
       inventory: { include: { item: true } },
       achievements: true,

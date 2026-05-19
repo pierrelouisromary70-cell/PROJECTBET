@@ -16,7 +16,11 @@ export type RunnerInput = {
   prAgeDays: number;      // âge du chrono de référence le plus récent
 };
 
-const HOUSE_VIG = 0.05;   // 5% de marge
+// Marge maison. Volontairement plus élevée que dans un bookmaker pro
+// (typiquement 4-6 %) car l'économie est virtuelle et on veut pousser
+// l'utilisateur à se réapprovisionner (pubs, parrainages, achats).
+// À 7 %, le joueur médian perd ~7 % de sa mise par pari sur longue durée.
+const HOUSE_VIG = 0.07;
 
 // Sensibilité de la logistique : un écart de 5% sur le temps => p ~ 0.85.
 const K = 35;

@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
     socks: "equippedSocks",
     cap: "equippedCap",
     glasses: "equippedGlasses",
+    watch: "equippedWatch",
+    belt: "equippedBelt",
   };
   const field = map[owned.item.category];
   if (!field) return NextResponse.json({ error: "catégorie inconnue" }, { status: 400 });
