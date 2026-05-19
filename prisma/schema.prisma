@@ -1,0 +1,203 @@
+// RunnerBet schema — SQLite/Prisma
+// Models couvrent : auth, profils coureurs, PRs certifiés, courses, paris, boutique, pubs.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============== AUTH / USERS ==============
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?
+  displayName   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Économie virtuelle
+  tokens        Int      @default(100)
+
+  // Strava
+  stravaId           String? @unique
+  stravaAccessToken  String?
+  stravaRefreshToken String?
+  stravaExpiresAt    Int?
+
+  // Réputation / anti-triche
+  trustScore    Int      @default(50) // 0-100
+
+  profile       RunnerProfile?
+  prs           PersonalRecord[]   @relation("UserPRs")
+  prVotes       PRVote[]
+  bets          Bet[]
+  inventory     InventoryItem[]
+  adViews       AdView[]
+  tokenLogs     TokenLog[]
+
+  racesCreated  Race[]             @relation("RaceCreator")
+  raceEntriesA  RaceEntry[]        @relation("RaceEntryRunner")
+}
+
+model RunnerProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gender      String   // "M" | "F" | "X"
+  birthYear   Int
+  city        String?
+
+  // VDOT courant (recalculé à chaque PR vérifié)
+  vdot        Float    @default(30)
+
+  // Avatar
+  avatarSeed  String   @default("base")
+  equippedShoes   String?
+  equippedShirt   String?
+  equippedShorts  String?
+  equippedSocks   String?
+  equippedCap     String?
+  equippedGlasses String?
+}
+
+// ============== CHRONOS CERTIFIÉS ==============
+
+model PersonalRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("UserPRs", fields: [userId], references: [id], onDelete: Cascade)
+
+  distanceM   Int      // distance en mètres (5000, 10000, 21097, 42195, etc.)
+  timeSec     Int      // chrono en secondes
+  raceDate    DateTime
+
+  source      String   // "STRAVA" | "MANUAL" | "OFFICIAL"
+  evidenceUrl String?  // lien résultat officiel ou photo dossard
+  stravaActivityId String? @unique
+
+  status      String   @default("PENDING") // PENDING | VERIFIED | REJECTED
+  verifiedAt  DateTime?
+
+  votes       PRVote[]
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId, distanceM])
+}
+
+model PRVote {
+  id      String  @id @default(cuid())
+  prId    String
+  pr      PersonalRecord @relation(fields: [prId], references: [id], onDelete: Cascade)
+  voterId String
+  voter   User    @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  approve Boolean
+  createdAt DateTime @default(now())
+
+  @@unique([prId, voterId])
+}
+
+// ============== COURSES & PARIS ==============
+
+model Race {
+  id          String   @id @default(cuid())
+  name        String
+  distanceM   Int
+  scheduledAt DateTime
+  location    String?
+  status      String   @default("OPEN") // OPEN | CLOSED | SETTLED
+  creatorId   String
+  creator     User     @relation("RaceCreator", fields: [creatorId], references: [id])
+
+  entries     RaceEntry[]
+  bets        Bet[]
+
+  createdAt   DateTime @default(now())
+}
+
+model RaceEntry {
+  id        String  @id @default(cuid())
+  raceId    String
+  race      Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  runnerId  String
+  runner    User    @relation("RaceEntryRunner", fields: [runnerId], references: [id], onDelete: Cascade)
+  finishSec Int?    // renseigné après course
+  position  Int?
+
+  @@unique([raceId, runnerId])
+}
+
+model Bet {
+  id          String   @id @default(cuid())
+  raceId      String
+  race        Race     @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  bettorId    String
+  bettor      User     @relation(fields: [bettorId], references: [id], onDelete: Cascade)
+
+  // Pari binaire : qui gagne entre A et B
+  runnerAId   String
+  runnerBId   String
+  pickedId    String   // celui sur qui on parie
+  stake       Int
+  oddsX100    Int      // cote *100 figée à la prise du pari (ex 185 = 1.85)
+
+  status      String   @default("OPEN") // OPEN | WON | LOST | VOID
+  payout      Int      @default(0)
+  settledAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([raceId, status])
+}
+
+// ============== BOUTIQUE ==============
+
+model ShopItem {
+  id          String   @id // slug stable
+  category    String   // shoes|shirt|shorts|socks|cap|glasses
+  brand       String
+  model       String
+  tier        String   // entry|mid|premium|carbon
+  priceTokens Int
+  imageEmoji  String   // pour l'avatar simple
+  description String
+
+  inventory   InventoryItem[]
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId    String
+  item      ShopItem @relation(fields: [itemId], references: [id])
+  acquiredAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+}
+
+// ============== ECONOMIE ==============
+
+model AdView {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  watchedAt DateTime @default(now())
+  tokensEarned Int
+
+  @@index([userId, watchedAt])
+}
+
+model TokenLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta     Int
+  reason    String   // BET_STAKE, BET_PAYOUT, AD_REWARD, PURCHASE, SIGNUP_BONUS, PR_VERIFIED_BONUS
+  ref       String?  // id de l'objet associé
+  createdAt DateTime @default(now())
+}
