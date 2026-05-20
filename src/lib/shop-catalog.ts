@@ -1,6 +1,12 @@
-// Catalogue boutique — basé sur le marché actuel des paires de course (2026)
-// et du textile running. Les prix en jetons s'inspirent du prix réel en euros,
-// avec une non-linéarité forte pour rendre les paires carbones très rares.
+// Catalogue boutique — marques et modèles 100 % fictifs.
+// Quatre marques imaginaires pour donner de la personnalité :
+//   • Stride Co   → daily polyvalent, ton accessible
+//   • Nimbus      → confort maximaliste
+//   • Velox       → tempo / compétition légère
+//   • Aether      → premium technique
+//   • Helion      → carbone racing, élite (le rêve)
+//
+// Les noms montent en intensité selon le tier : "Daily 1" → "Phantom Carbon Elite".
 
 export type CatalogItem = {
   id: string;
@@ -11,100 +17,96 @@ export type CatalogItem = {
   priceTokens: number;
   imageEmoji: string;
   description: string;
-  availableUntil?: string; // ISO date — null/undefined si permanent
+  availableUntil?: string;
 };
-
-// Conversion volontairement non-linéaire :
-//  - paire d'entrée  ~  60€  →    400 jetons
-//  - paire premium  ~ 180€  →   2 000 jetons
-//  - paire carbone  ~ 280€  →  15 000 jetons (rareté !)
-//  - paire élite    ~ 300€+ →  25 000 jetons
 
 export const CATALOG: CatalogItem[] = [
   // ---------- CHAUSSURES — ENTRY ----------
-  { id: "shoes_nike_pegasus_41", category: "shoes", brand: "Nike", model: "Pegasus 41", tier: "entry", priceTokens: 450, imageEmoji: "👟", description: "Chaussure d'entrée polyvalente, parfaite pour tes premiers kilomètres." },
-  { id: "shoes_asics_cumulus_27", category: "shoes", brand: "Asics", model: "Gel-Cumulus 27", tier: "entry", priceTokens: 480, imageEmoji: "👟", description: "Amorti FF Blast+ confortable pour endurance fondamentale." },
-  { id: "shoes_brooks_ghost_17", category: "shoes", brand: "Brooks", model: "Ghost 17", tier: "entry", priceTokens: 460, imageEmoji: "👟", description: "Le best-seller américain, neutre et tolérant." },
-  { id: "shoes_hoka_clifton_10", category: "shoes", brand: "Hoka", model: "Clifton 10", tier: "entry", priceTokens: 550, imageEmoji: "👟", description: "Amorti maximaliste signature Hoka." },
+  { id: "shoes_stride_daily_1", category: "shoes", brand: "Stride Co", model: "Daily 1", tier: "entry", priceTokens: 420, imageEmoji: "👟", description: "Ta première paire. Amorti franc, semelle souple, pour démarrer sans se ruiner." },
+  { id: "shoes_nimbus_cloud", category: "shoes", brand: "Nimbus", model: "Cloud", tier: "entry", priceTokens: 480, imageEmoji: "👟", description: "Mousse moelleuse, parfait pour les sorties longues sans contrainte." },
+  { id: "shoes_velox_start", category: "shoes", brand: "Velox", model: "Start", tier: "entry", priceTokens: 460, imageEmoji: "👟", description: "Plus dynamique que la moyenne, pour les premières accélérations." },
+  { id: "shoes_stride_trail_basic", category: "shoes", brand: "Stride Co", model: "Trail Basic", tier: "entry", priceTokens: 550, imageEmoji: "👟", description: "Crampons d'entrée, idéal pour sortir du goudron sans se ruiner." },
 
   // ---------- CHAUSSURES — MID ----------
-  { id: "shoes_saucony_endo_speed_5", category: "shoes", brand: "Saucony", model: "Endorphin Speed 5", tier: "mid", priceTokens: 1800, imageEmoji: "🥾", description: "Plaque nylon, PWRRUN PB. La pépite polyvalente." },
-  { id: "shoes_asics_novablast_5", category: "shoes", brand: "Asics", model: "Novablast 5", tier: "mid", priceTokens: 1600, imageEmoji: "🥾", description: "Sensation rebond, idéale pour fractionner sans plaque." },
-  { id: "shoes_hoka_mach_6", category: "shoes", brand: "Hoka", model: "Mach 6", tier: "mid", priceTokens: 1700, imageEmoji: "🥾", description: "Légère et nerveuse, parfaite pour tempo run." },
-  { id: "shoes_puma_deviate_nitro_3", category: "shoes", brand: "Puma", model: "Deviate Nitro 3", tier: "mid", priceTokens: 1900, imageEmoji: "🥾", description: "Plaque nylon Pwrplate, mousse Nitro Elite." },
+  { id: "shoes_velox_speed_3", category: "shoes", brand: "Velox", model: "Speed 3", tier: "mid", priceTokens: 1700, imageEmoji: "🥾", description: "Plaque nylon, mousse réactive. Le couteau-suisse tempo / fartlek." },
+  { id: "shoes_nimbus_vapor_2", category: "shoes", brand: "Nimbus", model: "Vapor 2", tier: "mid", priceTokens: 1600, imageEmoji: "🥾", description: "Drop modéré, sensation de rebond sans plaque carbone." },
+  { id: "shoes_aether_lift", category: "shoes", brand: "Aether", model: "Lift", tier: "mid", priceTokens: 1800, imageEmoji: "🥾", description: "Construction premium, parfait daily trainer pour gros volumes." },
+  { id: "shoes_helion_tempo", category: "shoes", brand: "Helion", model: "Tempo", tier: "mid", priceTokens: 1950, imageEmoji: "🥾", description: "Plaque souple, sensation course sans la fragilité du carbone." },
 
   // ---------- CHAUSSURES — PREMIUM ----------
-  { id: "shoes_nike_vomero_18", category: "shoes", brand: "Nike", model: "Vomero 18", tier: "premium", priceTokens: 2400, imageEmoji: "👠", description: "Double mousse ZoomX + ReactX. Top niveau premium daily." },
-  { id: "shoes_asics_superblast_2", category: "shoes", brand: "Asics", model: "Superblast 2", tier: "premium", priceTokens: 3200, imageEmoji: "👠", description: "Deux mousses superposées, le daily trainer le plus convoité." },
-  { id: "shoes_newbal_supercomp_trainer_v3", category: "shoes", brand: "New Balance", model: "SC Trainer v3", tier: "premium", priceTokens: 3000, imageEmoji: "👠", description: "Mousse FuelCell PEBA + plaque carbone d'entraînement." },
+  { id: "shoes_aether_tempest", category: "shoes", brand: "Aether", model: "Tempest", tier: "premium", priceTokens: 2600, imageEmoji: "👠", description: "Double mousse PEBA, plaque renforcée. Le daily de haut niveau." },
+  { id: "shoes_velox_apex", category: "shoes", brand: "Velox", model: "Apex", tier: "premium", priceTokens: 2900, imageEmoji: "👠", description: "Drop bas, mousse vive, tout pour les séances rapides à répétition." },
+  { id: "shoes_nimbus_stratos", category: "shoes", brand: "Nimbus", model: "Stratos", tier: "premium", priceTokens: 3100, imageEmoji: "👠", description: "Empilement record et rebond ahurissant. Pour avaler les ultras." },
+  { id: "shoes_helion_pulse_x", category: "shoes", brand: "Helion", model: "Pulse X", tier: "premium", priceTokens: 3400, imageEmoji: "👠", description: "Plaque carbone d'entraînement. Pour s'habituer à la vitesse." },
 
-  // ---------- CHAUSSURES — CARBON (rares & chères) ----------
-  { id: "shoes_nike_alphafly_3", category: "shoes", brand: "Nike", model: "Alphafly 3", tier: "carbon", priceTokens: 15000, imageEmoji: "🚀", description: "Plaque carbone + Air Zoom. La chaussure des records mondiaux marathon." },
-  { id: "shoes_nike_vaporfly_4", category: "shoes", brand: "Nike", model: "Vaporfly 4", tier: "carbon", priceTokens: 14000, imageEmoji: "🚀", description: "L'arme légère pour le 10K-semi rapide." },
-  { id: "shoes_adidas_adios_pro_4", category: "shoes", brand: "Adidas", model: "Adios Pro 4", tier: "carbon", priceTokens: 15500, imageEmoji: "🚀", description: "Lightstrike Pro + Energyrods 2.0." },
-  { id: "shoes_asics_metaspeed_sky_paris", category: "shoes", brand: "Asics", model: "Metaspeed Sky Paris", tier: "carbon", priceTokens: 16000, imageEmoji: "🚀", description: "Pour les coureurs à grande amplitude." },
-  { id: "shoes_asics_metaspeed_edge_paris", category: "shoes", brand: "Asics", model: "Metaspeed Edge Paris", tier: "carbon", priceTokens: 16000, imageEmoji: "🚀", description: "Pour les coureurs à haute cadence." },
-  { id: "shoes_saucony_endo_elite_2", category: "shoes", brand: "Saucony", model: "Endorphin Elite 2", tier: "carbon", priceTokens: 18000, imageEmoji: "🚀", description: "PWRRUN HG, plaque carbone Carbitex." },
-  { id: "shoes_puma_fastr_nitro_elite_3", category: "shoes", brand: "Puma", model: "Fast-R Nitro Elite 3", tier: "carbon", priceTokens: 17000, imageEmoji: "🚀", description: "Construction décollée, agressive et radicale." },
-  { id: "shoes_nb_supercomp_elite_v5", category: "shoes", brand: "New Balance", model: "SC Elite v5", tier: "carbon", priceTokens: 16500, imageEmoji: "🚀", description: "Empilement énorme, FuelCell PEBA + plaque carbone." },
-  { id: "shoes_hoka_rocket_x3", category: "shoes", brand: "Hoka", model: "Rocket X3", tier: "carbon", priceTokens: 15500, imageEmoji: "🚀", description: "Carbone Hoka, profilée pour les distances rapides." },
-  { id: "shoes_on_cloudboom_strike_ls", category: "shoes", brand: "On", model: "Cloudboom Strike LS", tier: "carbon", priceTokens: 25000, imageEmoji: "💎", description: "LightSpray, ultra-rare. Le rêve interdit." },
+  // ---------- CHAUSSURES — CARBON (rares, prix de rêve) ----------
+  { id: "shoes_helion_phantom_carbon", category: "shoes", brand: "Helion", model: "Phantom Carbon", tier: "carbon", priceTokens: 15000, imageEmoji: "🚀", description: "Le mythe. Plaque pleine carbone, mousse PEBA aérienne. Légère comme une plume, explosive comme un sprinteur." },
+  { id: "shoes_velox_cometa_x", category: "shoes", brand: "Velox", model: "Cometa X", tier: "carbon", priceTokens: 14000, imageEmoji: "🚀", description: "Construction radicale, géométrie agressive. Conçue pour le 10 km — semi le plus rapide de ta vie." },
+  { id: "shoes_aether_stellar_race", category: "shoes", brand: "Aether", model: "Stellar Race", tier: "carbon", priceTokens: 15500, imageEmoji: "🚀", description: "Plaque Helix Carbon™ et mousse Aerocell™. Une étoile sous chaque pied." },
+  { id: "shoes_nimbus_aurora_pro", category: "shoes", brand: "Nimbus", model: "Aurora Pro", tier: "carbon", priceTokens: 16500, imageEmoji: "🚀", description: "Empilement maximaliste + carbone. La machine à marathon ultra-confort." },
+  { id: "shoes_helion_vortex_elite", category: "shoes", brand: "Helion", model: "Vortex Elite", tier: "carbon", priceTokens: 17000, imageEmoji: "🚀", description: "Pour grandes amplitudes : amortit fort, propulse plus fort encore." },
+  { id: "shoes_helion_nebula_rx", category: "shoes", brand: "Helion", model: "Nebula RX", tier: "carbon", priceTokens: 17000, imageEmoji: "🚀", description: "Variante cadence : plus directe, plus stable, taillée pour les pieds rapides." },
+  { id: "shoes_aether_hyperion", category: "shoes", brand: "Aether", model: "Hyperion", tier: "carbon", priceTokens: 18000, imageEmoji: "🚀", description: "L'arsenal complet : double plaque, mousse à étages, drop modéré." },
+  { id: "shoes_velox_solaris", category: "shoes", brand: "Velox", model: "Solaris", tier: "carbon", priceTokens: 15500, imageEmoji: "🚀", description: "Compromis idéal entre stabilité et explosivité. Pour les sub-3 marathon." },
+  { id: "shoes_stride_meteora", category: "shoes", brand: "Stride Co", model: "Meteora", tier: "carbon", priceTokens: 14500, imageEmoji: "🚀", description: "Le premier carbone abordable de Stride Co. Sans concession sur la mousse." },
+  { id: "shoes_quartz_eclipse", category: "shoes", brand: "Quartz", model: "Eclipse Carbon", tier: "carbon", priceTokens: 25000, imageEmoji: "💎", description: "Production ultra-limitée, projection sur la peau du pied, semelle décollée. La paire que personne ne possède." },
 
-  // ---------- TEXTILE — TEE-SHIRTS ----------
-  { id: "shirt_basic_white", category: "shirt", brand: "Generic", model: "Tee blanc basique", tier: "entry", priceTokens: 80, imageEmoji: "👕", description: "Coton standard." },
-  { id: "shirt_nike_miler", category: "shirt", brand: "Nike", model: "Dri-FIT Miler", tier: "mid", priceTokens: 280, imageEmoji: "👕", description: "Technique respirant." },
-  { id: "shirt_satisfy_techsilk", category: "shirt", brand: "Satisfy", model: "TechSilk", tier: "premium", priceTokens: 1400, imageEmoji: "👕", description: "Soie technique, le luxe du running." },
-  { id: "shirt_distance_iconic_singlet", category: "shirt", brand: "District Vision", model: "Air-Wear Singlet", tier: "premium", priceTokens: 1100, imageEmoji: "🎽", description: "Singlet de compétition élégant." },
+  // ---------- ÉDITIONS LIMITÉES ----------
+  { id: "shoes_helion_phantom_aurora", category: "shoes", brand: "Helion", model: "Phantom Carbon « Aurora Edition »", tier: "limited", priceTokens: 22000, imageEmoji: "🌸", description: "Coloris numéroté inspiré des aurores boréales. Drop éphémère." },
+  { id: "shoes_aether_stellar_gold", category: "shoes", brand: "Aether", model: "Stellar Race « Gold »", tier: "limited", priceTokens: 24000, imageEmoji: "🏅", description: "Empiècements dorés, semelle iridescente. Édition exclusive de courte fenêtre." },
+  { id: "watch_apex_orion_signature", category: "watch", brand: "Apex Watch Co", model: "Orion Signature", tier: "limited", priceTokens: 18000, imageEmoji: "🌟", description: "Boîtier titane brossé et cadran cosmique. Numérotée à 100 exemplaires." },
+
+  // ---------- TEXTILE — HAUTS ----------
+  { id: "shirt_basic_white", category: "shirt", brand: "Basic Lab", model: "Tee Essentiel", tier: "entry", priceTokens: 80, imageEmoji: "👕", description: "Coton respirable. La base." },
+  { id: "shirt_drift_dry", category: "shirt", brand: "Drift", model: "Dry Tee", tier: "mid", priceTokens: 280, imageEmoji: "👕", description: "Tissu technique micro-perforé." },
+  { id: "shirt_lumen_aerosilk", category: "shirt", brand: "Lumen", model: "Aerosilk", tier: "premium", priceTokens: 1400, imageEmoji: "👕", description: "Maille silk-tech, ultra-légère, sensation seconde peau. Le luxe discret." },
+  { id: "shirt_lumen_singlet_air", category: "shirt", brand: "Lumen", model: "Air Singlet", tier: "premium", priceTokens: 1100, imageEmoji: "🎽", description: "Le maillot de race nu, monogrammé Lumen." },
 
   // ---------- TEXTILE — SHORTS ----------
-  { id: "shorts_basic", category: "shorts", brand: "Generic", model: "Short basique", tier: "entry", priceTokens: 100, imageEmoji: "🩳", description: "Pour démarrer." },
-  { id: "shorts_nike_stride", category: "shorts", brand: "Nike", model: "Stride 5\"", tier: "mid", priceTokens: 350, imageEmoji: "🩳", description: "Avec poche intégrée." },
-  { id: "shorts_bandit_track", category: "shorts", brand: "Bandit Running", model: "Track Short", tier: "premium", priceTokens: 950, imageEmoji: "🩳", description: "Coupe race fine." },
-  { id: "shorts_soar_race_split", category: "shorts", brand: "Soar", model: "Race Split", tier: "premium", priceTokens: 1500, imageEmoji: "🩳", description: "Le short de course de l'élite." },
+  { id: "shorts_basic", category: "shorts", brand: "Basic Lab", model: "Short Essentiel", tier: "entry", priceTokens: 100, imageEmoji: "🩳", description: "Confort sans chichi." },
+  { id: "shorts_drift_pace_5", category: "shorts", brand: "Drift", model: "Pace 5\"", tier: "mid", priceTokens: 350, imageEmoji: "🩳", description: "Poche zippée, doublure intégrée." },
+  { id: "shorts_lumen_race_3", category: "shorts", brand: "Lumen", model: "Race 3\"", tier: "premium", priceTokens: 950, imageEmoji: "🩳", description: "Coupe split, tissu ultra-aéré. Pour les chronos." },
+  { id: "shorts_lumen_pro_split", category: "shorts", brand: "Lumen", model: "Pro Split", tier: "premium", priceTokens: 1500, imageEmoji: "🩳", description: "Le short de course des élites Lumen." },
 
   // ---------- CHAUSSETTES ----------
-  { id: "socks_basic", category: "socks", brand: "Generic", model: "Chaussettes coton", tier: "entry", priceTokens: 40, imageEmoji: "🧦", description: "Basiques." },
-  { id: "socks_balega_hidden", category: "socks", brand: "Balega", model: "Hidden Comfort", tier: "mid", priceTokens: 180, imageEmoji: "🧦", description: "Les invisibles confortables." },
-  { id: "socks_stance_run_crew", category: "socks", brand: "Stance", model: "Run Crew", tier: "premium", priceTokens: 320, imageEmoji: "🧦", description: "Compression douce." },
+  { id: "socks_basic", category: "socks", brand: "Basic Lab", model: "Sock Essentiel", tier: "entry", priceTokens: 40, imageEmoji: "🧦", description: "Coton armé, basique mais propre." },
+  { id: "socks_drift_invisible", category: "socks", brand: "Drift", model: "Invisible Run", tier: "mid", priceTokens: 180, imageEmoji: "🧦", description: "Coupe basse, anti-ampoules." },
+  { id: "socks_lumen_compress", category: "socks", brand: "Lumen", model: "Compress", tier: "premium", priceTokens: 320, imageEmoji: "🧦", description: "Compression légère, fibre antibactérienne." },
 
   // ---------- CASQUETTES ----------
-  { id: "cap_basic", category: "cap", brand: "Generic", model: "Casquette unie", tier: "entry", priceTokens: 120, imageEmoji: "🧢", description: "Pour le soleil." },
-  { id: "cap_ciele_gocap", category: "cap", brand: "Ciele Athletics", model: "GOCap", tier: "premium", priceTokens: 800, imageEmoji: "🧢", description: "L'icône running." },
-  { id: "cap_satisfy_peaceshell", category: "cap", brand: "Satisfy", model: "Peaceshell Cap", tier: "premium", priceTokens: 1200, imageEmoji: "🧢", description: "Premium running headwear." },
+  { id: "cap_basic", category: "cap", brand: "Basic Lab", model: "Cap Essentiel", tier: "entry", priceTokens: 120, imageEmoji: "🧢", description: "Pour le soleil." },
+  { id: "cap_drift_runner", category: "cap", brand: "Drift", model: "Runner", tier: "premium", priceTokens: 800, imageEmoji: "🧢", description: "Visière souple, tissu respirant." },
+  { id: "cap_lumen_shell", category: "cap", brand: "Lumen", model: "Shell Cap", tier: "premium", priceTokens: 1200, imageEmoji: "🧢", description: "Coupe sculptée, monogramme discret. Pièce de collection." },
 
   // ---------- LUNETTES ----------
-  { id: "glasses_basic", category: "glasses", brand: "Generic", model: "Lunettes basiques", tier: "entry", priceTokens: 200, imageEmoji: "🕶️", description: "Anti-UV simple." },
-  { id: "glasses_oakley_radar_ev", category: "glasses", brand: "Oakley", model: "Radar EV Path", tier: "premium", priceTokens: 2200, imageEmoji: "🕶️", description: "Prizm, la référence sport." },
-  { id: "glasses_district_vision_keiichi", category: "glasses", brand: "District Vision", model: "Keiichi", tier: "premium", priceTokens: 3500, imageEmoji: "🕶️", description: "Lunettes de méditation cinétique." },
+  { id: "glasses_basic", category: "glasses", brand: "Basic Lab", model: "Solar Basic", tier: "entry", priceTokens: 200, imageEmoji: "🕶️", description: "Protection UV simple." },
+  { id: "glasses_drift_blade", category: "glasses", brand: "Drift", model: "Blade", tier: "premium", priceTokens: 2200, imageEmoji: "🕶️", description: "Monture sport sans cadre, verres polarisants." },
+  { id: "glasses_lumen_zen", category: "glasses", brand: "Lumen", model: "Zen", tier: "premium", priceTokens: 3500, imageEmoji: "🕶️", description: "Lunettes de méditation cinétique. Aussi élégantes que techniques." },
 
-  // ---------- MONTRES GPS (catalogue 2026) ----------
-  { id: "watch_coros_pace_3", category: "watch", brand: "Coros", model: "Pace 3", tier: "entry", priceTokens: 1800, imageEmoji: "⌚", description: "GPS double fréquence, autonomie record, le rapport qualité-prix." },
-  { id: "watch_garmin_fr_165", category: "watch", brand: "Garmin", model: "Forerunner 165", tier: "entry", priceTokens: 2200, imageEmoji: "⌚", description: "AMOLED, GPS, entrée de gamme Garmin." },
-  { id: "watch_garmin_fr_265", category: "watch", brand: "Garmin", model: "Forerunner 265", tier: "mid", priceTokens: 4200, imageEmoji: "⌚", description: "AMOLED, GPS multi-bande, plans d'entraînement." },
-  { id: "watch_polar_pacer_pro", category: "watch", brand: "Polar", model: "Pacer Pro", tier: "mid", priceTokens: 3500, imageEmoji: "⌚", description: "Léger, FC précise, profil endurance complet." },
-  { id: "watch_garmin_fr_965", category: "watch", brand: "Garmin", model: "Forerunner 965", tier: "premium", priceTokens: 6500, imageEmoji: "⌚", description: "AMOLED, cartographie, le bijou du marathonien." },
-  { id: "watch_coros_apex_2_pro", category: "watch", brand: "Coros", model: "Apex 2 Pro", tier: "premium", priceTokens: 5800, imageEmoji: "⌚", description: "Titane, cartographie hors-ligne, autonomie monstre." },
-  { id: "watch_apple_ultra_3", category: "watch", brand: "Apple", model: "Watch Ultra 3", tier: "premium", priceTokens: 9000, imageEmoji: "⌚", description: "Pour les puristes Apple qui veulent du sport." },
-  { id: "watch_garmin_fenix_8", category: "watch", brand: "Garmin", model: "Fenix 8", tier: "premium", priceTokens: 10500, imageEmoji: "⌚", description: "Le couteau-suisse multi-sport haut de gamme." },
-  { id: "watch_garmin_enduro_3", category: "watch", brand: "Garmin", model: "Enduro 3", tier: "carbon", priceTokens: 13000, imageEmoji: "💎", description: "Solaire, ultra-trail, autonomie semaine sans recharge." },
+  // ---------- MONTRES GPS ----------
+  { id: "watch_cadence_pace_1", category: "watch", brand: "Cadence", model: "Pace 1", tier: "entry", priceTokens: 1800, imageEmoji: "⌚", description: "GPS double fréquence, autonomie XL, simple et solide." },
+  { id: "watch_cadence_pace_2", category: "watch", brand: "Cadence", model: "Pace 2", tier: "entry", priceTokens: 2200, imageEmoji: "⌚", description: "Écran AMOLED, capteur cardiaque optique amélioré." },
+  { id: "watch_cadence_meridian", category: "watch", brand: "Cadence", model: "Meridian", tier: "mid", priceTokens: 4200, imageEmoji: "⌚", description: "AMOLED, multi-bande, plans d'entraînement intégrés." },
+  { id: "watch_apex_runner", category: "watch", brand: "Apex Watch Co", model: "Runner", tier: "mid", priceTokens: 3500, imageEmoji: "⌚", description: "Légère, FC précise, métriques course complètes." },
+  { id: "watch_cadence_meridian_pro", category: "watch", brand: "Cadence", model: "Meridian Pro", tier: "premium", priceTokens: 6500, imageEmoji: "⌚", description: "Cartographie offline, charges d'entraînement. Le couteau-suisse." },
+  { id: "watch_apex_summit_2", category: "watch", brand: "Apex Watch Co", model: "Summit 2", tier: "premium", priceTokens: 5800, imageEmoji: "⌚", description: "Titane, cartographie hors-ligne, autonomie de plusieurs semaines." },
+  { id: "watch_orbis_one", category: "watch", brand: "Orbis", model: "One Ultra", tier: "premium", priceTokens: 9000, imageEmoji: "⌚", description: "Pour ceux qui veulent un objet aussi désirable que performant." },
+  { id: "watch_apex_summit_pro", category: "watch", brand: "Apex Watch Co", model: "Summit Pro", tier: "premium", priceTokens: 10500, imageEmoji: "⌚", description: "Multi-sport haut de gamme, solaire optionnel." },
+  { id: "watch_orbis_horizon_solar", category: "watch", brand: "Orbis", model: "Horizon Solar", tier: "carbon", priceTokens: 13000, imageEmoji: "💎", description: "Charge solaire perpétuelle, taillé pour les ultra-trails sans recharger." },
 
-  // ---------- CEINTURES / HYDRATATION ----------
-  { id: "belt_naked_band", category: "belt", brand: "Naked", model: "Running Band", tier: "mid", priceTokens: 700, imageEmoji: "🎽", description: "Ceinture invisible, tient gels et téléphone." },
-  { id: "belt_flipbelt_zipper", category: "belt", brand: "FlipBelt", model: "Zipper", tier: "entry", priceTokens: 350, imageEmoji: "🎒", description: "L'icône des ceintures rando-run." },
-  { id: "belt_salomon_active_skin_5", category: "belt", brand: "Salomon", model: "Active Skin 5", tier: "premium", priceTokens: 2200, imageEmoji: "🎒", description: "Sac de trail léger, 2 flasks 250 ml fournies." },
-  { id: "belt_uswe_pace_8", category: "belt", brand: "USWE", model: "Pace 8", tier: "premium", priceTokens: 2800, imageEmoji: "🎒", description: "Sac no-bounce, parfait pour longs trails." },
-  { id: "belt_maurten_320", category: "belt", brand: "Maurten", model: "Gel 320", tier: "entry", priceTokens: 200, imageEmoji: "🍯", description: "320 kcal, le gel des élites marathon." },
-  { id: "belt_ta_endurance", category: "belt", brand: "TA Endurance", model: "Cocktail Caféiné", tier: "entry", priceTokens: 180, imageEmoji: "🥤", description: "Le bidon recharge maison." },
-
-  // ---------- ÉDITIONS LIMITÉES (DROPS) ----------
-  // Pour pousser le FOMO : durée 30 jours à partir d'aujourd'hui.
-  { id: "shoes_alphafly_3_tokyo", category: "shoes", brand: "Nike", model: "Alphafly 3 « Tokyo Edition »", tier: "limited", priceTokens: 22000, imageEmoji: "🌸", description: "Coloris Tokyo Marathon, drop limité.", availableUntil: __limitedExpiry() },
-  { id: "shoes_metaspeed_paris_gold", category: "shoes", brand: "Asics", model: "Metaspeed Sky Paris « Gold Edition »", tier: "limited", priceTokens: 24000, imageEmoji: "🏅", description: "Édition or des JO de Paris, série numérotée.", availableUntil: __limitedExpiry() },
-  { id: "watch_garmin_fenix_8_signature", category: "watch", brand: "Garmin", model: "Fenix 8 Signature", tier: "limited", priceTokens: 18000, imageEmoji: "🌟", description: "Édition signature en titane brossé. Stock limité.", availableUntil: __limitedExpiry() },
+  // ---------- HYDRATATION ----------
+  { id: "belt_drift_band", category: "belt", brand: "Drift", model: "Slim Band", tier: "mid", priceTokens: 700, imageEmoji: "🎽", description: "Ceinture invisible, accueille gels et téléphone." },
+  { id: "belt_basic_zip", category: "belt", brand: "Basic Lab", model: "Zip Belt", tier: "entry", priceTokens: 350, imageEmoji: "🎒", description: "L'icône des ceintures rando-run. Robuste, fiable." },
+  { id: "belt_apex_vest_5", category: "belt", brand: "Apex Athletica", model: "Race Vest 5L", tier: "premium", priceTokens: 2200, imageEmoji: "🎒", description: "Gilet de trail léger, 2 flasks 250 ml fournies." },
+  { id: "belt_apex_vest_8", category: "belt", brand: "Apex Athletica", model: "Race Vest 8L", tier: "premium", priceTokens: 2800, imageEmoji: "🎒", description: "Compagnon d'ultra : zéro rebond, mille poches." },
+  { id: "belt_fuel_gel", category: "belt", brand: "FuelCo", model: "Endurance Gel 320", tier: "entry", priceTokens: 200, imageEmoji: "🍯", description: "320 kcal, le gel longue distance des élites." },
+  { id: "belt_fuel_caffeine", category: "belt", brand: "FuelCo", model: "Caffeine Mix", tier: "entry", priceTokens: 180, imageEmoji: "🥤", description: "Bidon recharge maison, dose caféinée." },
 ];
 
-function __limitedExpiry(daysFromNow = 30): string {
-  return new Date(Date.now() + daysFromNow * 86400000).toISOString();
+// Date d'expiration des drops limités : 30 jours.
+const __dropEnd = new Date(Date.now() + 30 * 86400000).toISOString();
+for (const item of CATALOG) {
+  if (item.tier === "limited") item.availableUntil = __dropEnd;
 }
 
 export const findItem = (id: string) => CATALOG.find((c) => c.id === id);

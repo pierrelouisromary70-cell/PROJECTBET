@@ -5,30 +5,155 @@
 :root { color-scheme: dark; }
 
 html, body {
-  background: linear-gradient(180deg, #07090f 0%, #0b0f1a 100%);
+  background:
+    radial-gradient(1200px 800px at 80% -10%, rgba(34, 211, 238, 0.08), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(245, 197, 24, 0.06), transparent 60%),
+    linear-gradient(180deg, #07090f 0%, #0a0d18 100%);
   color: #e7ecf3;
   min-height: 100vh;
+  font-feature-settings: "ss01", "cv11";
 }
 
 a { color: inherit; }
 
+/* Cartes -------------------------------------------------- */
 .card {
-  @apply bg-surface/80 border border-white/5 rounded-2xl p-5 shadow-lg shadow-black/20 backdrop-blur;
+  @apply bg-surface/70 border border-white/5 rounded-2xl p-5
+         shadow-lg shadow-black/30 backdrop-blur transition;
 }
+
+/* Boutons -------------------------------------------------- */
 .btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold transition;
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold
+         transition-all duration-150 active:scale-[0.98];
 }
-.btn-primary { @apply btn bg-accent text-ink hover:brightness-110; }
-.btn-ghost { @apply btn border border-white/10 hover:border-white/30; }
-.btn-gold { @apply btn bg-gold text-ink hover:brightness-110; }
-.chip { @apply inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-xs; }
+.btn-primary {
+  @apply btn text-ink;
+  background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 60%, #0891b2 100%);
+  box-shadow: 0 6px 24px -10px rgba(34, 211, 238, 0.55);
+}
+.btn-primary:hover { filter: brightness(1.05); }
+.btn-primary:disabled { opacity: 0.4; filter: grayscale(0.6); cursor: not-allowed; }
+.btn-ghost {
+  @apply btn border border-white/10 hover:border-white/30 hover:bg-white/[0.03];
+}
+.btn-gold {
+  @apply btn text-ink;
+  background: linear-gradient(135deg, #fde68a 0%, #f5c518 50%, #d97706 100%);
+  box-shadow: 0 6px 24px -10px rgba(245, 197, 24, 0.5);
+}
+.btn-gold:hover { filter: brightness(1.05); }
+.btn-gold:disabled { opacity: 0.4; filter: grayscale(0.6); cursor: not-allowed; }
+
+/* Chips -------------------------------------------------- */
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full bg-white/5 border border-white/10
+         px-2 py-0.5 text-xs whitespace-nowrap;
+}
+
+/* Inputs -------------------------------------------------- */
 .input {
   @apply w-full rounded-xl bg-black/30 border border-white/10 px-3 py-2
-         outline-none focus:border-accent;
+         outline-none focus:border-accent transition;
 }
 .label { @apply text-sm text-white/70 mb-1 block; }
+
+/* Tier styling ------------------------------------------- */
 .tier-entry   { @apply text-white/70; }
 .tier-mid     { @apply text-cyan-300; }
 .tier-premium { @apply text-violet-300; }
 .tier-carbon  { @apply text-amber-300; }
 .tier-limited { @apply text-pink-300; }
+
+/* Shop card per tier ------------------------------------- */
+.shop-card {
+  @apply rounded-2xl p-5 flex flex-col relative overflow-hidden border transition-all duration-200;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%);
+}
+.shop-card:hover { transform: translateY(-2px); }
+
+.shop-card.shop-entry   { @apply border-white/10; }
+.shop-card.shop-mid     { @apply border-cyan-400/25; }
+.shop-card.shop-premium { @apply border-violet-400/30; }
+.shop-card.shop-carbon  {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.08) inset,
+              0 18px 50px -22px rgba(245, 158, 11, 0.45);
+  background:
+    radial-gradient(140% 90% at 50% -20%, rgba(245, 158, 11, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+}
+.shop-card.shop-limited {
+  border: 1px solid rgba(244, 114, 182, 0.55);
+  box-shadow: 0 0 0 1px rgba(244, 114, 182, 0.08) inset,
+              0 18px 50px -22px rgba(236, 72, 153, 0.55);
+  background:
+    radial-gradient(140% 90% at 50% -20%, rgba(244, 114, 182, 0.22) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+}
+
+/* Glyph (gros emoji / icone tier) */
+.shop-glyph {
+  @apply text-5xl;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.6));
+}
+
+/* Halo animé pour les carbones et limités */
+.tier-shine {
+  position: relative;
+  overflow: hidden;
+}
+.tier-shine::after {
+  content: "";
+  position: absolute;
+  inset: -50% -50% auto auto;
+  height: 200%;
+  width: 70%;
+  transform: rotate(35deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+  animation: shine 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes shine {
+  0%, 100% { transform: translateX(0%) rotate(35deg); opacity: 0; }
+  20% { opacity: 1; }
+  50% { transform: translateX(-260%) rotate(35deg); opacity: 0; }
+}
+
+/* Tier badge */
+.tier-badge {
+  @apply text-[10px] uppercase tracking-widest px-2 py-1 rounded-md font-bold;
+}
+.tier-badge.b-entry   { @apply bg-white/10 text-white/70; }
+.tier-badge.b-mid     { @apply bg-cyan-400/15 text-cyan-300; }
+.tier-badge.b-premium { @apply bg-violet-400/15 text-violet-300; }
+.tier-badge.b-carbon  { @apply bg-amber-400/15 text-amber-300; }
+.tier-badge.b-limited { @apply bg-pink-400/15 text-pink-300; }
+
+/* Brand wordmark — petit logo texte stylé */
+.brand {
+  @apply text-[11px] uppercase tracking-[0.2em] font-bold text-white/50;
+}
+
+/* Hero landing */
+.hero-title {
+  background: linear-gradient(135deg, #ffffff 0%, #a5f3fc 60%, #facc15 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section "stat" */
+.stat-num {
+  @apply font-extrabold tabular-nums;
+}
+
+/* Avatar */
+.avatar-ring {
+  background: conic-gradient(from 140deg, #22d3ee, #a78bfa, #f5c518, #22d3ee);
+  padding: 2px;
+  border-radius: 9999px;
+}
+.avatar-inner {
+  @apply rounded-full bg-ink p-3;
+}
